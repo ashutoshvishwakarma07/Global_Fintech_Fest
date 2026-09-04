@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 20% 98%;
+    --foreground: 220 20% 12%;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background-color: #f8fafc;
+    color: #0f172a;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    overscroll-behavior-y: none;
+  }
+}
+
+/* Custom mobile utilities */
+.touch-target-min {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.safe-bottom {
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Glassmorphic subtle blur */
+.glass-header {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
