@@ -4,3 +4,11 @@ out
 .env*.local
 *.log
 .DS_Store
+
+# Backend ignores
+backend/target/
+backend/reports/
+backend/.env
+backend/.env.local
+backend/.idea/
+backend/*.iml

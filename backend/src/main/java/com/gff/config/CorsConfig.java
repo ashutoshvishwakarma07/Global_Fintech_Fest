@@ -1,0 +1,34 @@
+package com.gff.config;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+/**
+ * Cross-Origin Resource Sharing (CORS) Configuration.
+ * Enables communication between Next.js frontend and Spring Boot backend.
+ */
+@Configuration
+public class CorsConfig {
+
+    @Value("${cors.allowed-origins:http://localhost:3000}")
+    private String[] allowedOrigins;
+
+    @Bean
+    public WebMvcConfigurer corsConfigurer() {
+        return new WebMvcConfigurer() {
+            @Override
+            public void addCorsMappings(CorsRegistry registry) {
+                registry.addMapping("/**")
+                        .allowedOrigins(allowedOrigins)
+                        .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+                        .allowedHeaders("*")
+                        .exposedHeaders("Authorization", "Content-Disposition")
+                        .allowCredentials(true)
+                        .maxAge(3600);
+            }
+        };
+    }
+}
