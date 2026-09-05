@@ -31,6 +31,14 @@ export interface UploadRecord {
   isOffline?: boolean;
   retryCount?: number;
   errorMessage?: string | null;
+  ocrStatus?: string;
+  cardHolderName?: string;
+  companyName?: string;
+  designation?: string;
+  extractedEmail?: string;
+  extractedMobile?: string;
+  extractedAddress?: string;
+  rawOcrText?: string;
 }
 
 export interface QueuedUploadItem {
