@@ -1,5 +1,6 @@
 package com.gff.service;
 
+import com.gff.entity.VisitingCard;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
@@ -19,6 +20,7 @@ import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -54,6 +56,10 @@ public class EmailService {
      * @return Result status description
      */
     public String sendDailyOcrReport(byte[] excelBytes, LocalDate reportDate, Map<String, Object> stats) {
+        return sendDailyOcrReport(excelBytes, reportDate, stats, null);
+    }
+
+    public String sendDailyOcrReport(byte[] excelBytes, LocalDate reportDate, Map<String, Object> stats, List<VisitingCard> cards) {
         String dateStr = reportDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         String attachmentFileName = "Daily_OCR_Report_" + dateStr + ".xlsx";
 
@@ -87,7 +93,7 @@ public class EmailService {
             helper.setTo(recipients);
             helper.setSubject("[Daily Report] OCR Processing & Upload Summary - " + dateStr);
 
-            String htmlBody = buildHtmlEmailBody(dateStr, stats);
+            String htmlBody = buildHtmlEmailBody(dateStr, stats, cards);
             helper.setText(htmlBody, true);
 
             ByteArrayResource attachmentResource = new ByteArrayResource(excelBytes);
@@ -213,11 +219,63 @@ public class EmailService {
         }
     }
 
-    private String buildHtmlEmailBody(String dateStr, Map<String, Object> stats) {
+    private String buildHtmlEmailBody(String dateStr, Map<String, Object> stats, List<VisitingCard> cards) {
         long total = stats.get("total") != null ? ((Number) stats.get("total")).longValue() : 0;
         long completed = stats.get("completed") != null ? ((Number) stats.get("completed")).longValue() : 0;
         long failed = stats.get("failed") != null ? ((Number) stats.get("failed")).longValue() : 0;
         double successRate = stats.get("successRate") != null ? ((Number) stats.get("successRate")).doubleValue() : 0.0;
+
+        StringBuilder cardRows = new StringBuilder();
+        if (cards != null && !cards.isEmpty()) {
+            int idx = 1;
+            for (VisitingCard card : cards) {
+                String holder = card.getCardHolderName() != null ? card.getCardHolderName() : "N/A";
+                String company = card.getCompanyName() != null ? card.getCompanyName() : "N/A";
+                String desig = card.getDesignation() != null ? card.getDesignation() : "N/A";
+                String phone = card.getExtractedMobile() != null ? card.getExtractedMobile() : "N/A";
+                String email = card.getExtractedEmail() != null ? card.getExtractedEmail() : "N/A";
+                String status = card.getOcrStatus() != null ? card.getOcrStatus().name() : "UNKNOWN";
+                String statusColor = "COMPLETED".equals(status) ? "#047857" : "#B91C1C";
+
+                cardRows.append("""
+                    <tr style="border-bottom: 1px solid #E5E7EB;">
+                        <td style="padding: 8px 10px; border: 1px solid #E5E7EB; color: #6B7280; text-align: center;">%d</td>
+                        <td style="padding: 8px 10px; border: 1px solid #E5E7EB; font-weight: 600; color: #1F2937;">%s</td>
+                        <td style="padding: 8px 10px; border: 1px solid #E5E7EB; color: #374151;">%s</td>
+                        <td style="padding: 8px 10px; border: 1px solid #E5E7EB; color: #374151;">%s</td>
+                        <td style="padding: 8px 10px; border: 1px solid #E5E7EB; color: #374151;">%s</td>
+                        <td style="padding: 8px 10px; border: 1px solid #E5E7EB; color: #374151;">%s</td>
+                        <td style="padding: 8px 10px; border: 1px solid #E5E7EB; text-align: center; color: %s; font-weight: bold;">%s</td>
+                    </tr>
+                """.formatted(idx++, holder, company, desig, phone, email, statusColor, status));
+            }
+        }
+
+        String cardsTableHtml = cardRows.length() > 0 ? """
+            <div style="margin-top: 25px;">
+                <div style="font-size: 15px; font-weight: 700; color: #1F2937; margin-bottom: 10px;">
+                    &#128179; Extracted Visiting Card Records (Tabular View)
+                </div>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px;">
+                        <thead>
+                            <tr style="background-color: #1E40AF; color: #ffffff;">
+                                <th style="padding: 8px 10px; border: 1px solid #CBD5E1; text-align: center;">#</th>
+                                <th style="padding: 8px 10px; border: 1px solid #CBD5E1; text-align: left;">Card Holder Name</th>
+                                <th style="padding: 8px 10px; border: 1px solid #CBD5E1; text-align: left;">Company</th>
+                                <th style="padding: 8px 10px; border: 1px solid #CBD5E1; text-align: left;">Designation</th>
+                                <th style="padding: 8px 10px; border: 1px solid #CBD5E1; text-align: left;">Phone</th>
+                                <th style="padding: 8px 10px; border: 1px solid #CBD5E1; text-align: left;">Email</th>
+                                <th style="padding: 8px 10px; border: 1px solid #CBD5E1; text-align: center;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            %s
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        """.formatted(cardRows.toString()) : "";
 
         return """
             <!DOCTYPE html>
@@ -226,7 +284,7 @@ public class EmailService {
                 <meta charset="UTF-8">
                 <style>
                     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
-                    .card { background-color: #ffffff; border-radius: 8px; padding: 25px; max-width: 650px; margin: 0 auto; box-shadow: 0 4px 6px rgba(0,0,0,0.08); border-top: 5px solid #1E40AF; }
+                    .card { background-color: #ffffff; border-radius: 8px; padding: 25px; max-width: 800px; margin: 0 auto; box-shadow: 0 4px 6px rgba(0,0,0,0.08); border-top: 5px solid #1E40AF; }
                     .header { text-align: left; border-bottom: 2px solid #E5E7EB; padding-bottom: 15px; margin-bottom: 20px; }
                     .title { font-size: 20px; font-weight: 700; color: #1F2937; margin: 0; }
                     .subtitle { font-size: 13px; color: #6B7280; margin-top: 4px; }
@@ -246,7 +304,7 @@ public class EmailService {
                     </div>
                     <p style="font-size: 14px; color: #374151; line-height: 1.5;">
                         Hello Team Lead,<br><br>
-                        The automated daily OCR processing and audit workflow for <strong>%s</strong> has completed. Below is the summary of documents uploaded and processed:
+                        The automated daily OCR processing and audit workflow for <strong>%s</strong> has completed. Below is the summary and extracted visiting card records:
                     </p>
                     <table class="stats-table">
                         <thead>
@@ -274,8 +332,9 @@ public class EmailService {
                             </tr>
                         </tbody>
                     </table>
+                    %s
                     <p style="font-size: 13px; color: #4B5563;">
-                        &#128206; <strong>Attachment:</strong> Please find the detailed Excel spreadsheet attached containing the complete audit log, cardholder details, S3 links, and extracted OCR text.
+                        &#128206; <strong>Attachment:</strong> Please find the detailed Excel spreadsheet attached containing both Summary & All Documents tabs with direct S3 links and full metadata.
                     </p>
                     <div class="footer">
                         This is an automated report generated by the GFF Backend Scheduler Service.<br>
@@ -284,7 +343,7 @@ public class EmailService {
                 </div>
             </body>
             </html>
-            """.formatted(dateStr, dateStr, total, completed, failed, successRate);
+            """.formatted(dateStr, dateStr, total, completed, failed, successRate, cardsTableHtml);
     }
 
     private void saveReportBackupToDisk(byte[] excelBytes, String fileName) {

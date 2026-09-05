@@ -107,7 +107,7 @@ public class DailyOcrReportScheduler {
             log.info("================================================================================");
             log.info(" STEP 4: Email Spreadsheet Attachment to Team Leads via Spring Boot Mail");
             log.info("================================================================================");
-            String emailStatus = emailService.sendDailyOcrReport(excelBytes, today, stats);
+            String emailStatus = emailService.sendDailyOcrReport(excelBytes, today, stats, todayCards);
             log.info("Email dispatch status: {}", emailStatus);
 
             result.put("status", "SUCCESS");
