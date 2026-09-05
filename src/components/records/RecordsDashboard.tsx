@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { User, UploadRecord, UserRole, RecordStatus } from "@/types";
+import { User, UploadRecord, UserRole, RecordStatus, DocumentType } from "@/types";
 import { RecordCard } from "./RecordCard";
 import { RecordTable } from "./RecordTable";
 import { RecordDetailModal } from "./RecordDetailModal";
@@ -15,53 +15,55 @@ import {
   UserCheck,
   X,
   Plus,
-  RefreshCw,
-  HardDrive,
-  AlertCircle,
-  CheckCircle2,
+  Shield,
+  FileCheck,
+  Filter,
+  Users,
 } from "lucide-react";
 
 interface RecordsDashboardProps {
   currentUser: User;
   records: UploadRecord[];
-  isOnline: boolean;
-  isSyncing: boolean;
-  syncProgress: { current: number; total: number; message: string };
-  onTriggerSync: () => void;
-  onSyncSingle: (id: string) => void;
   onNavigateToUpload: () => void;
 }
 
 export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
   currentUser,
   records,
-  isOnline,
-  isSyncing,
-  syncProgress,
-  onTriggerSync,
-  onSyncSingle,
   onNavigateToUpload,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [roleFilter, setRoleFilter] = useState<"All" | UserRole>("All");
+  const [uploaderFilter, setUploaderFilter] = useState<string>("All");
+  const [docTypeFilter, setDocTypeFilter] = useState<string>("All");
   const [statusFilter, setStatusFilter] = useState<"All" | RecordStatus>("All");
   const [sortBy, setSortBy] = useState<"latest" | "oldest">("latest");
   const [selectedRecord, setSelectedRecord] = useState<UploadRecord | null>(null);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
-  // Compute pending items count
-  const pendingRecords = useMemo(() => {
-    return records.filter(
-      (r) => r.status === "Pending Upload" || r.status === "Failed" || r.status === "Uploading"
-    );
+  const isAdmin = currentUser.role === "Admin";
+
+  // List of unique uploaders (for Admin filter)
+  const uniqueUploaders = useMemo(() => {
+    const names = new Set<string>();
+    records.forEach((r) => {
+      if (r.uploadedBy) names.add(r.uploadedBy);
+    });
+    return Array.from(names);
   }, [records]);
 
-  const pendingCount = pendingRecords.length;
-  const totalCount = records.length;
-  const myUploadsCount = records.filter(
-    (r) => r.email.toLowerCase() === currentUser.email.toLowerCase()
-  ).length;
+  // Document types available in the records
+  const availableDocTypes: (DocumentType | "All")[] = [
+    "All",
+    "PAN Card",
+    "Aadhaar Card",
+    "Driving License",
+    "Passport",
+    "Voter ID",
+  ];
 
+  // Key metrics
+  const totalCount = records.length;
+  const verifiedCount = records.filter((r) => r.status === "Verified").length;
   const latestUploadTime = useMemo(() => {
     if (records.length === 0) return "None";
     return records[0]?.uploadedAt || "None";
@@ -78,14 +80,35 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
           const matchesName = record.uploadedBy.toLowerCase().includes(q);
           const matchesEmail = record.email.toLowerCase().includes(q);
           const matchesMobile = record.mobile.includes(q);
+          const matchesDocType =
+            record.extractedData?.documentType?.toLowerCase().includes(q) || false;
+          const matchesDocNum =
+            record.extractedData?.documentNumber?.toLowerCase().includes(q) || false;
           const matchesNotes = record.notes?.toLowerCase().includes(q) || false;
-          if (!matchesId && !matchesName && !matchesEmail && !matchesMobile && !matchesNotes) {
+
+          if (
+            !matchesId &&
+            !matchesName &&
+            !matchesEmail &&
+            !matchesMobile &&
+            !matchesDocType &&
+            !matchesDocNum &&
+            !matchesNotes
+          ) {
             return false;
           }
         }
 
-        // Role filter
-        if (roleFilter !== "All" && record.role !== roleFilter) {
+        // Admin Uploader filter
+        if (isAdmin && uploaderFilter !== "All" && record.uploadedBy !== uploaderFilter) {
+          return false;
+        }
+
+        // Document Type filter
+        if (
+          docTypeFilter !== "All" &&
+          record.extractedData?.documentType !== docTypeFilter
+        ) {
           return false;
         }
 
@@ -103,101 +126,87 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
           return a.uploadedAt.localeCompare(b.uploadedAt);
         }
       });
-  }, [records, searchQuery, roleFilter, statusFilter, sortBy]);
+  }, [records, searchQuery, uploaderFilter, docTypeFilter, statusFilter, sortBy, isAdmin]);
 
   const hasActiveFilters =
-    roleFilter !== "All" || statusFilter !== "All" || searchQuery.trim() !== "";
+    uploaderFilter !== "All" ||
+    docTypeFilter !== "All" ||
+    statusFilter !== "All" ||
+    searchQuery.trim() !== "";
 
   const handleResetFilters = () => {
     setSearchQuery("");
-    setRoleFilter("All");
+    setUploaderFilter("All");
+    setDocTypeFilter("All");
     setStatusFilter("All");
     setSortBy("latest");
   };
 
   return (
     <div className="w-full max-w-6xl mx-auto pb-24 md:pb-12 animate-in fade-in duration-300">
-      {/* Offline Pending Uploads Alert Banner & Sync Control */}
-      {pendingCount > 0 && (
-        <div className="mb-5 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-2xl p-4 sm:p-5 shadow-lg shadow-amber-200/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in slide-in-from-top-2">
-          <div className="flex items-start gap-3">
+      {/* Top Admin Notice if logged in as Admin */}
+      {isAdmin && (
+        <div className="mb-5 bg-gradient-to-r from-purple-700 via-indigo-700 to-indigo-800 text-white rounded-2xl p-4 sm:p-5 shadow-lg shadow-indigo-200/50 flex items-center justify-between gap-3 animate-in slide-in-from-top-2">
+          <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
-              <HardDrive className="w-5 h-5" />
+              <Shield className="w-5 h-5 text-white" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-sm sm:text-base">
-                  Pending Uploads: {pendingCount}
-                </span>
-                <span className="bg-amber-800/60 px-2 py-0.5 rounded text-[10px] font-mono">
-                  Stored in IndexedDB
+                <span className="font-bold text-sm sm:text-base">Admin Master Console</span>
+                <span className="bg-purple-900/60 px-2 py-0.5 rounded text-[10px] font-semibold">
+                  All Records Access
                 </span>
               </div>
-              <p className="text-xs text-amber-50 mt-0.5 max-w-md">
-                {syncProgress.message ||
-                  (isOnline
-                    ? "Ready to sync with verification cloud."
-                    : "Saved safely on device. Will auto-upload when reconnected.")}
+              <p className="text-xs text-purple-100 mt-0.5">
+                Viewing all uploaded records and extracted IRIS OCR data across Rahul Sharma, Priya Verma, and Admin.
               </p>
             </div>
           </div>
-
-          <div className="w-full sm:w-auto flex items-center gap-2">
-            <button
-              type="button"
-              disabled={isSyncing || !isOnline}
-              onClick={onTriggerSync}
-              className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-white text-amber-900 hover:bg-amber-50 active:scale-95 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-50 touch-target-min"
-            >
-              <RefreshCw className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`} />
-              <span>
-                {isSyncing
-                  ? `Syncing ${syncProgress.current} of ${syncProgress.total}...`
-                  : isOnline
-                  ? "Sync Now"
-                  : "Offline (Will sync auto)"}
-              </span>
-            </button>
-          </div>
+          <span className="hidden sm:inline-flex items-center px-3 py-1 bg-white/10 rounded-full text-xs font-semibold text-purple-100">
+            {records.length} Total Records
+          </span>
         </div>
       )}
 
       {/* Top Metrics Row */}
       <div className="grid grid-cols-3 gap-2.5 sm:gap-4 mb-5">
-        {/* Total Uploads */}
+        {/* Metric 1 */}
         <div className="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/80 shadow-card">
           <div className="flex items-center gap-1.5 sm:gap-2 text-slate-500 mb-1">
             <div className="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
               <FolderOpen className="w-3.5 h-3.5" />
             </div>
             <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider truncate">
-              Total Records
+              {isAdmin ? "Total Records" : "My Records"}
             </span>
           </div>
           <div className="text-lg sm:text-2xl font-black text-slate-900">{totalCount}</div>
         </div>
 
-        {/* My Uploads */}
+        {/* Metric 2 */}
         <div className="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/80 shadow-card">
           <div className="flex items-center gap-1.5 sm:gap-2 text-slate-500 mb-1">
             <div className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              <UserCheck className="w-3.5 h-3.5" />
+              {isAdmin ? <Users className="w-3.5 h-3.5" /> : <FileCheck className="w-3.5 h-3.5" />}
             </div>
             <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider truncate">
-              My Uploads
+              {isAdmin ? "Uploaders" : "Verified Docs"}
             </span>
           </div>
-          <div className="text-lg sm:text-2xl font-black text-slate-900">{myUploadsCount}</div>
+          <div className="text-lg sm:text-2xl font-black text-slate-900">
+            {isAdmin ? uniqueUploaders.length : verifiedCount}
+          </div>
         </div>
 
-        {/* Latest Activity */}
+        {/* Metric 3 */}
         <div className="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/80 shadow-card">
           <div className="flex items-center gap-1.5 sm:gap-2 text-slate-500 mb-1">
             <div className="w-6 h-6 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
               <Clock className="w-3.5 h-3.5" />
             </div>
             <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider truncate">
-              Latest Activity
+              Latest Upload
             </span>
           </div>
           <div className="text-xs sm:text-sm font-bold text-slate-800 truncate font-mono mt-1">
@@ -218,7 +227,7 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by ID, name, email, phone..."
+              placeholder="Search by ID, name, doc number, email..."
               className="w-full pl-9 pr-8 py-2.5 bg-slate-50 hover:bg-slate-100/60 focus:bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 touch-target-min transition-colors"
             />
             {searchQuery && (
@@ -259,32 +268,55 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
         </div>
 
         {/* Desktop Filter Row */}
-        <div className="hidden md:flex items-center justify-between pt-2 border-t border-slate-100 text-xs gap-3">
+        <div className="hidden md:flex items-center justify-between pt-2 border-t border-slate-100 text-xs gap-3 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Admin: Filter by Uploader */}
+            {isAdmin && uniqueUploaders.length > 0 && (
+              <>
+                <span className="text-slate-400 font-medium text-[11px] uppercase tracking-wider">
+                  Uploader:
+                </span>
+                <select
+                  value={uploaderFilter}
+                  onChange={(e) => setUploaderFilter(e.target.value)}
+                  aria-label="Filter by Uploader"
+                  className="bg-slate-100 border border-slate-200 rounded-lg py-1 px-2.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                >
+                  <option value="All">All Uploaders ({uniqueUploaders.length})</option>
+                  {uniqueUploaders.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+                <div className="h-4 w-[1px] bg-slate-200 mx-1" />
+              </>
+            )}
+
+            {/* Filter by Document Type */}
             <span className="text-slate-400 font-medium text-[11px] uppercase tracking-wider">
-              Role:
+              Doc Type:
             </span>
-            {(["All", "Field User", "Supervisor"] as const).map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => setRoleFilter(r)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
-                  roleFilter === r
-                    ? "bg-indigo-600 text-white shadow-xs"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-              >
-                {r}
-              </button>
-            ))}
+            <select
+              value={docTypeFilter}
+              onChange={(e) => setDocTypeFilter(e.target.value)}
+              aria-label="Filter by Document Type"
+              className="bg-slate-100 border border-slate-200 rounded-lg py-1 px-2.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            >
+              {availableDocTypes.map((dt) => (
+                <option key={dt} value={dt}>
+                  {dt}
+                </option>
+              ))}
+            </select>
 
             <div className="h-4 w-[1px] bg-slate-200 mx-1" />
 
+            {/* Status Filter */}
             <span className="text-slate-400 font-medium text-[11px] uppercase tracking-wider">
               Status:
             </span>
-            {(["All", "Uploaded", "Pending Upload", "Verified", "Failed"] as const).map((s) => (
+            {(["All", "Uploaded", "Verified"] as const).map((s) => (
               <button
                 key={s}
                 type="button"
@@ -338,36 +370,52 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
               </button>
             </div>
 
-            {/* Role Filter Options */}
+            {/* Admin: Uploader Filter */}
+            {isAdmin && uniqueUploaders.length > 0 && (
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
+                  Filter by Uploader
+                </label>
+                <select
+                  value={uploaderFilter}
+                  onChange={(e) => setUploaderFilter(e.target.value)}
+                  className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800"
+                >
+                  <option value="All">All Uploaders</option>
+                  {uniqueUploaders.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Document Type Filter */}
             <div>
               <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
-                Filter By Role
+                Document Type
               </label>
-              <div className="grid grid-cols-3 gap-2">
-                {(["All", "Field User", "Supervisor"] as const).map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => setRoleFilter(r)}
-                    className={`py-2 px-2 text-center rounded-xl text-xs font-semibold touch-target-min transition-all ${
-                      roleFilter === r
-                        ? "bg-indigo-600 text-white shadow-sm"
-                        : "bg-slate-100 text-slate-700"
-                    }`}
-                  >
-                    {r}
-                  </button>
+              <select
+                value={docTypeFilter}
+                onChange={(e) => setDocTypeFilter(e.target.value)}
+                className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800"
+              >
+                {availableDocTypes.map((dt) => (
+                  <option key={dt} value={dt}>
+                    {dt}
+                  </option>
                 ))}
-              </div>
+              </select>
             </div>
 
-            {/* Status Filter Options */}
+            {/* Status Filter */}
             <div>
               <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
                 Filter By Status
               </label>
-              <div className="grid grid-cols-2 gap-2">
-                {(["All", "Uploaded", "Pending Upload", "Verified", "Failed"] as const).map((s) => (
+              <div className="grid grid-cols-3 gap-2">
+                {(["All", "Uploaded", "Verified"] as const).map((s) => (
                   <button
                     key={s}
                     type="button"
@@ -381,6 +429,37 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
                     {s}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Sort Filter */}
+            <div>
+              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
+                Sort Order
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSortBy("latest")}
+                  className={`py-2 px-2 text-center rounded-xl text-xs font-semibold touch-target-min transition-all ${
+                    sortBy === "latest"
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "bg-slate-100 text-slate-700"
+                  }`}
+                >
+                  Latest First
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSortBy("oldest")}
+                  className={`py-2 px-2 text-center rounded-xl text-xs font-semibold touch-target-min transition-all ${
+                    sortBy === "oldest"
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "bg-slate-100 text-slate-700"
+                  }`}
+                >
+                  Oldest First
+                </button>
               </div>
             </div>
 
@@ -438,8 +517,6 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
                 key={record.id}
                 record={record}
                 onSelect={(r) => setSelectedRecord(r)}
-                onSyncSingle={onSyncSingle}
-                isSyncing={isSyncing}
               />
             ))}
           </div>
@@ -449,8 +526,6 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
             <RecordTable
               records={filteredRecords}
               onSelect={(r) => setSelectedRecord(r)}
-              onSyncSingle={onSyncSingle}
-              isSyncing={isSyncing}
             />
           </div>
         </>

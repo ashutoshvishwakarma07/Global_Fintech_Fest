@@ -50,6 +50,18 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
     setErrorMessage(null);
   };
 
+  const getRoleBadgeStyle = (role: string) => {
+    switch (role) {
+      case "Admin":
+        return "bg-purple-100 text-purple-800 border-purple-200";
+      case "Supervisor":
+        return "bg-amber-100 text-amber-800 border-amber-200";
+      case "Field User":
+      default:
+        return "bg-blue-100 text-blue-800 border-blue-200";
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col justify-between bg-gradient-to-b from-slate-50 via-white to-indigo-50/40 p-4 sm:p-6 md:p-8">
       {/* Top Brand Header */}
@@ -61,7 +73,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
           FieldCapture Portal
         </h1>
         <p className="text-sm text-slate-500 mt-1.5 max-w-xs mx-auto">
-          Mobile image verification and field inspection data system
+          Online Document Verification & IRIS Extraction System
         </p>
       </div>
 
@@ -70,7 +82,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
         <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-card border border-slate-100">
           <h2 className="text-lg font-semibold text-slate-900 mb-1">Welcome back</h2>
           <p className="text-xs sm:text-sm text-slate-500 mb-6">
-            Sign in to access camera uploads and records
+            Sign in to access document capture and records
           </p>
 
           {errorMessage && (
@@ -149,9 +161,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
           <div className="mt-8 pt-6 border-t border-slate-100">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Quick Demo Credentials
+                Select Demo Role
               </span>
-              <span className="text-[11px] text-indigo-600 font-medium">1-Tap Fill</span>
+              <span className="text-[11px] text-indigo-600 font-medium">1-Tap Autofill</span>
             </div>
 
             <div className="grid grid-cols-1 gap-2.5">
@@ -173,9 +185,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                     <div>
                       <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                         {u.name}
-                        <span className={`text-[10px] font-normal px-1.5 py-0.2 rounded-full ${
-                          u.role === "Supervisor" ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"
-                        }`}>
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${getRoleBadgeStyle(u.role)}`}>
                           {u.role}
                         </span>
                       </div>
@@ -187,7 +197,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
               ))}
             </div>
             <p className="text-[11px] text-slate-400 text-center mt-3">
-              Password for demo accounts: <code className="font-mono text-slate-600 bg-slate-100 px-1 py-0.5 rounded">Demo@123</code>
+              Demo passwords: <code className="font-mono text-slate-600 bg-slate-100 px-1 py-0.5 rounded">Demo@123</code> (User 1 & 2) &bull; <code className="font-mono text-slate-600 bg-slate-100 px-1 py-0.5 rounded">Admin@123</code> (Admin)
             </p>
           </div>
         </div>
@@ -195,7 +205,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
 
       {/* Footer */}
       <div className="text-center py-4 text-xs text-slate-400">
-        Enterprise Field Operations &bull; Mobile-First Architecture
+        Enterprise Field Operations &bull; Online IRIS Verification Platform
       </div>
     </div>
   );

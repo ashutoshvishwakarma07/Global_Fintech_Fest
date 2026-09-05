@@ -2,25 +2,35 @@
 
 import React from "react";
 import { User } from "@/types";
-import { LogOut, ShieldCheck, Wifi, WifiOff, HardDrive } from "lucide-react";
+import { LogOut, ShieldCheck, Shield } from "lucide-react";
 
 interface AppHeaderProps {
   user: User;
-  isOnline: boolean;
-  pendingCount?: number;
   onLogout: () => void;
   activeTab: "upload" | "records";
   onTabChange: (tab: "upload" | "records") => void;
+  recordsCount?: number;
 }
 
 export const AppHeader: React.FC<AppHeaderProps> = ({
   user,
-  isOnline,
-  pendingCount = 0,
   onLogout,
   activeTab,
   onTabChange,
+  recordsCount = 0,
 }) => {
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case "Admin":
+        return "bg-purple-100 text-purple-800 border-purple-200";
+      case "Supervisor":
+        return "bg-amber-100 text-amber-800 border-amber-200";
+      case "Field User":
+      default:
+        return "bg-blue-100 text-blue-800 border-blue-200";
+    }
+  };
+
   return (
     <header className="sticky top-0 z-40 w-full glass-header border-b border-slate-200/80 shadow-xs">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
@@ -34,26 +44,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               <h1 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight leading-none">
                 FieldCapture
               </h1>
-              {/* Online / Offline Status Badge */}
-              <span
-                className={`inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${
-                  isOnline
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                    : "bg-rose-50 text-rose-700 border-rose-200 animate-pulse"
-                }`}
-              >
-                {isOnline ? (
-                  <>
-                    <Wifi className="w-2.5 h-2.5" /> Online
-                  </>
-                ) : (
-                  <>
-                    <WifiOff className="w-2.5 h-2.5" /> Offline
-                  </>
-                )}
+              <span className="inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                IRIS OCR
               </span>
             </div>
-            <span className="text-[10px] text-slate-500 font-medium">GFF Mobile Portal</span>
+            <span className="text-[10px] text-slate-500 font-medium">GFF Enterprise Portal</span>
           </div>
         </div>
 
@@ -79,10 +74,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            <span>Upload Records</span>
-            {pendingCount > 0 && (
-              <span className="bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full">
-                {pendingCount}
+            <span>{user.role === "Admin" ? "All Records" : "My Records"}</span>
+            {recordsCount > 0 && (
+              <span className="bg-indigo-600 text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full">
+                {recordsCount}
               </span>
             )}
           </button>
@@ -108,11 +103,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               </div>
               <div className="flex items-center gap-1 mt-0.5">
                 <span
-                  className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-                    user.role === "Supervisor"
-                      ? "bg-amber-100 text-amber-800"
-                      : "bg-blue-100 text-blue-800"
-                  }`}
+                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${getRoleBadge(
+                    user.role
+                  )}`}
                 >
                   {user.role}
                 </span>
