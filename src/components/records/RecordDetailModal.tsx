@@ -16,6 +16,10 @@ import {
   FileText,
   Shield,
   ArrowLeft,
+  Sparkles,
+  ShieldCheck,
+  Calendar,
+  Hash,
 } from "lucide-react";
 
 interface RecordDetailModalProps {
@@ -24,22 +28,45 @@ interface RecordDetailModalProps {
 }
 
 export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({ record, onClose }) => {
-  const [copied, setCopied] = useState(false);
+  const [copiedId, setCopiedId] = useState(false);
+  const [copiedDocNum, setCopiedDocNum] = useState(false);
+  const [activeImageView, setActiveImageView] = useState<"combined" | "front" | "back">("combined");
+
+  React.useEffect(() => {
+    setActiveImageView("combined");
+  }, [record?.id]);
 
   if (!record) return null;
 
   const handleCopyId = () => {
     if (typeof navigator !== "undefined") {
       navigator.clipboard.writeText(record.id);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopiedId(true);
+      setTimeout(() => setCopiedId(false), 2000);
     }
   };
 
+  const handleCopyDocNum = () => {
+    if (typeof navigator !== "undefined" && record.extractedData?.documentNumber) {
+      navigator.clipboard.writeText(record.extractedData.documentNumber);
+      setCopiedDocNum(true);
+      setTimeout(() => setCopiedDocNum(false), 2000);
+    }
+  };
+
+  const currentImageToDisplay =
+    record.captureMode === "two-sided"
+      ? activeImageView === "front"
+        ? record.frontImageUrl || record.imageUrl
+        : activeImageView === "back"
+        ? record.backImageUrl || record.imageUrl
+        : record.imageUrl
+      : record.imageUrl;
+
   const handleDownload = () => {
     const link = document.createElement("a");
-    link.href = record.imageUrl;
-    link.download = `${record.id}-verification.jpg`;
+    link.href = currentImageToDisplay;
+    link.download = `${record.id}-${activeImageView}.jpg`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -47,11 +74,7 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({ record, on
 
   const statusStyles: Record<string, string> = {
     Uploaded: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    Verified: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    "Pending Upload": "bg-amber-50 text-amber-800 border-amber-300",
-    Uploading: "bg-blue-50 text-blue-700 border-blue-200",
-    Failed: "bg-rose-50 text-rose-700 border-rose-200",
-    Pending: "bg-amber-50 text-amber-700 border-amber-200",
+    Verified: "bg-emerald-50 text-emerald-800 border-emerald-300",
   };
 
   return (
@@ -83,10 +106,19 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({ record, on
                   title="Copy ID"
                   aria-label="Copy Record ID"
                 >
-                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copiedId ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
                 </button>
+                {record.captureMode === "two-sided" && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                    Two-Sided
+                  </span>
+                )}
               </div>
-              <span className="text-[11px] text-slate-400">Record Details</span>
+              <span className="text-[11px] text-slate-400">Record & Extraction Details</span>
             </div>
           </div>
 
@@ -111,11 +143,50 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({ record, on
         </div>
 
         {/* Scrollable Body */}
-        <div className="overflow-y-auto p-5 space-y-5 flex-1">
+        <div className="overflow-y-auto p-5 space-y-4 flex-1">
+          {/* Two-Sided View Switcher Tabs */}
+          {record.captureMode === "two-sided" && (
+            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/70 text-xs">
+              <button
+                type="button"
+                onClick={() => setActiveImageView("combined")}
+                className={`flex-1 py-1.5 px-2 rounded-lg font-semibold transition-all ${
+                  activeImageView === "combined"
+                    ? "bg-white text-indigo-700 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Combined Collage
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveImageView("front")}
+                className={`flex-1 py-1.5 px-2 rounded-lg font-semibold transition-all ${
+                  activeImageView === "front"
+                    ? "bg-white text-indigo-700 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Front Side
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveImageView("back")}
+                className={`flex-1 py-1.5 px-2 rounded-lg font-semibold transition-all ${
+                  activeImageView === "back"
+                    ? "bg-white text-indigo-700 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Back Side
+              </button>
+            </div>
+          )}
+
           {/* Large Image Preview */}
           <div className="relative rounded-2xl overflow-hidden bg-slate-900 aspect-[4/3] w-full shadow-inner border border-slate-200">
             <img
-              src={record.imageUrl}
+              src={currentImageToDisplay}
               alt={record.id}
               className="w-full h-full object-contain"
             />
@@ -126,12 +197,88 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({ record, on
               title="Download image"
             >
               <Download className="w-3.5 h-3.5" />
-              Download
+              Download {activeImageView === "combined" ? "Collage" : activeImageView === "front" ? "Front" : "Back"}
             </button>
           </div>
 
-          {/* Details List */}
+          {/* IRIS OCR Extraction Section */}
+          {record.extractedData ? (
+            <div className="bg-gradient-to-br from-indigo-50/90 to-purple-50/70 rounded-2xl p-4 border border-indigo-200/80 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-indigo-900 font-bold text-xs">
+                  <Sparkles className="w-4 h-4 text-indigo-600" />
+                  <span>IRIS API Extraction Results</span>
+                </div>
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                  {Math.round(
+                    record.extractedData.confidence <= 1
+                      ? record.extractedData.confidence * 100
+                      : record.extractedData.confidence
+                  )}% Confidence
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5 pt-1">
+                <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs">
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold block">Document Type</span>
+                  <span className="text-xs font-bold text-slate-800">{record.extractedData.documentType}</span>
+                </div>
+
+                <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Document No</span>
+                    <button
+                      type="button"
+                      onClick={handleCopyDocNum}
+                      className="text-slate-400 hover:text-indigo-600 p-0.5"
+                      title="Copy Document Number"
+                      aria-label="Copy Document Number"
+                    >
+                      {copiedDocNum ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                    </button>
+                  </div>
+                  <span className="font-mono text-xs font-bold text-indigo-700 truncate block">
+                    {record.extractedData.documentNumber}
+                  </span>
+                </div>
+
+                {(record.extractedData.extractedName || record.extractedData.name) && (
+                  <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs col-span-2">
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Extracted Name</span>
+                    <span className="text-xs font-semibold text-slate-800">
+                      {record.extractedData.extractedName || record.extractedData.name}
+                    </span>
+                  </div>
+                )}
+
+                {record.extractedData.issueDate && (
+                  <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs">
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Issue / Validity</span>
+                    <span className="text-xs font-medium text-slate-700 font-mono">{record.extractedData.issueDate}</span>
+                  </div>
+                )}
+
+                {record.extractedData.rawText && (
+                  <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs col-span-2">
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block mb-1">OCR Raw Data</span>
+                    <div className="font-mono text-[10px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-200/60 leading-relaxed max-h-24 overflow-y-auto">
+                      {record.extractedData.rawText}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 text-center text-xs text-slate-500">
+              No IRIS OCR data attached to this record.
+            </div>
+          )}
+
+          {/* User & Uploader Details */}
           <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/70 space-y-3 text-xs">
+            <h4 className="font-bold text-slate-900 text-xs mb-1">Uploader & Contact Information</h4>
+
             {/* User */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
               <span className="text-slate-500 flex items-center gap-1.5">

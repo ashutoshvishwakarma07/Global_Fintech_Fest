@@ -23,6 +23,15 @@ export const DEMO_USERS: DemoUser[] = [
     mobile: "9812345678",
     avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
   },
+  {
+    id: "usr_admin",
+    email: "admin@demo.com",
+    password: "Admin@123",
+    name: "Admin User",
+    role: "Admin",
+    mobile: "9900112233",
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+  },
 ];
 
 const AUTH_STORAGE_KEY = "gff_current_user";
@@ -44,7 +53,7 @@ export const mockAuthService = {
 
   async login(emailOrUsername: string, password: string): Promise<{ success: boolean; user?: User; error?: string }> {
     // Artificial small delay for realistic UX feedback
-    await new Promise((resolve) => setTimeout(resolve, 350));
+    await new Promise((resolve) => setTimeout(resolve, 300));
 
     const normalizedEmail = emailOrUsername.trim().toLowerCase();
     const user = DEMO_USERS.find(
@@ -54,7 +63,7 @@ export const mockAuthService = {
     if (!user) {
       return {
         success: false,
-        error: "Invalid credentials. Please check your email or password.",
+        error: "Invalid credentials. Please select from the Demo accounts below.",
       };
     }
 

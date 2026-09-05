@@ -8,54 +8,24 @@ import {
   Mail,
   ChevronRight,
   Shield,
-  RefreshCw,
-  HardDrive,
-  AlertTriangle,
   CheckCircle2,
+  FileText,
+  Sparkles,
 } from "lucide-react";
 
 interface RecordCardProps {
   record: UploadRecord;
   onSelect: (record: UploadRecord) => void;
-  onSyncSingle?: (id: string) => void;
-  isSyncing?: boolean;
 }
 
-export const RecordCard: React.FC<RecordCardProps> = ({
-  record,
-  onSelect,
-  onSyncSingle,
-  isSyncing = false,
-}) => {
+export const RecordCard: React.FC<RecordCardProps> = ({ record, onSelect }) => {
   const getStatusBadge = () => {
     switch (record.status) {
-      case "Pending Upload":
-        return {
-          pillClass: "bg-amber-50 text-amber-800 border-amber-300",
-          icon: <HardDrive className="w-3 h-3 text-amber-600" />,
-          label: "Pending Upload",
-          subtext: "Saved on device",
-        };
-      case "Uploading":
-        return {
-          pillClass: "bg-blue-50 text-blue-700 border-blue-200 animate-pulse",
-          icon: <RefreshCw className="w-3 h-3 text-blue-600 animate-spin" />,
-          label: "Uploading...",
-          subtext: "Transmitting data",
-        };
-      case "Failed":
-        return {
-          pillClass: "bg-rose-50 text-rose-700 border-rose-200",
-          icon: <AlertTriangle className="w-3 h-3 text-rose-600" />,
-          label: "Failed",
-          subtext: "Retry scheduled",
-        };
       case "Verified":
         return {
           pillClass: "bg-emerald-50 text-emerald-800 border-emerald-300",
           icon: <CheckCircle2 className="w-3 h-3 text-emerald-600" />,
           label: "Verified",
-          subtext: null,
         };
       case "Uploaded":
       default:
@@ -63,25 +33,16 @@ export const RecordCard: React.FC<RecordCardProps> = ({
           pillClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
           icon: <CheckCircle2 className="w-3 h-3 text-emerald-600" />,
           label: "Uploaded",
-          subtext: null,
         };
     }
   };
 
   const badge = getStatusBadge();
-  const canManualSync =
-    (record.status === "Pending Upload" || record.status === "Failed") && onSyncSingle;
 
   return (
     <div
       onClick={() => onSelect(record)}
-      className={`group bg-white rounded-2xl border p-3.5 shadow-card hover:shadow-card-hover active:scale-[0.99] transition-all cursor-pointer flex flex-col gap-3 ${
-        record.status === "Pending Upload"
-          ? "border-amber-200/90 bg-amber-50/20"
-          : record.status === "Failed"
-          ? "border-rose-200 bg-rose-50/20"
-          : "border-slate-200/80"
-      }`}
+      className="group bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-card hover:shadow-card-hover active:scale-[0.99] transition-all cursor-pointer flex flex-col gap-3"
     >
       {/* Top Row: Thumbnail + Key Meta */}
       <div className="flex items-start gap-3.5">
@@ -133,26 +94,30 @@ export const RecordCard: React.FC<RecordCardProps> = ({
         </div>
       </div>
 
-      {/* Subtext / Manual Sync Row for Offline Records */}
-      {badge.subtext && (
-        <div className="px-3 py-1.5 rounded-xl bg-amber-50/80 border border-amber-200/60 flex items-center justify-between text-xs">
-          <span className="text-[11px] text-amber-900 font-medium">
-            {badge.subtext}
+      {/* IRIS OCR Extracted Document Snippet */}
+      {record.extractedData && (
+        <div className="bg-indigo-50/70 rounded-xl px-3 py-2 border border-indigo-100 flex items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <FileText className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+            <span className="font-semibold text-indigo-950 truncate">
+              {record.extractedData.documentType}
+            </span>
+            {record.captureMode === "two-sided" && (
+              <span className="text-[9px] font-bold text-purple-700 bg-purple-100 px-1 py-0.2 rounded shrink-0">
+                2-Sided
+              </span>
+            )}
+            <span className="font-mono text-[11px] text-indigo-700 bg-white/80 px-1.5 py-0.5 rounded border border-indigo-200/60 truncate">
+              {record.extractedData.documentNumber}
+            </span>
+          </div>
+          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md shrink-0 border border-emerald-200">
+            {Math.round(
+              record.extractedData.confidence <= 1
+                ? record.extractedData.confidence * 100
+                : record.extractedData.confidence
+            )}%
           </span>
-          {canManualSync && (
-            <button
-              type="button"
-              disabled={isSyncing}
-              onClick={(e) => {
-                e.stopPropagation();
-                onSyncSingle(record.id);
-              }}
-              className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-bold text-[10px] flex items-center gap-1 touch-target-min"
-            >
-              <RefreshCw className={`w-2.5 h-2.5 ${isSyncing ? "animate-spin" : ""}`} />
-              Sync Now
-            </button>
-          )}
         </div>
       )}
 

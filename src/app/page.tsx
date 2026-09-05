@@ -1,40 +1,45 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { User, UploadRecord } from "@/types";
+import { User, UploadRecord, CaptureMode } from "@/types";
 import { mockAuthService } from "@/services/mockAuthService";
 import { mockUploadService } from "@/services/mockUploadService";
-import { syncService } from "@/services/syncService";
-import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { BottomNav } from "@/components/layout/BottomNav";
-import { NetworkStatusBar } from "@/components/common/NetworkStatusBar";
 import { UploadActionCards } from "@/components/upload/UploadActionCards";
 import { UploadForm } from "@/components/upload/UploadForm";
 import { UploadSuccessModal } from "@/components/upload/UploadSuccessModal";
 import { RecordsDashboard } from "@/components/records/RecordsDashboard";
 import { CameraCaptureModal } from "@/components/camera/CameraCaptureModal";
 import { ToastContainer, ToastMessage } from "@/components/common/Toast";
+import { CollageResult } from "@/services/collageService";
 
 export default function Home() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
 
-  // Network State
-  const { isOnline, isSimulatedOffline, toggleSimulation } = useNetworkStatus();
-
   // Navigation & Flow State
   const [activeTab, setActiveTab] = useState<"upload" | "records">("upload");
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const [successRecord, setSuccessRecord] = useState<UploadRecord | null>(null);
-  const [isSuccessOffline, setIsSuccessOffline] = useState(false);
+  const [captureMode, setCaptureMode] = useState<CaptureMode>("single");
+  const [twoSideData, setTwoSideData] = useState<{
+    frontUrl: string;
+    backUrl: string;
+  } | null>(null);
 
-  // Data Store (Merged uploaded & offline queue)
+  // Camera State
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [cameraTarget, setCameraTarget] = useState<"single" | "front" | "back">("single");
+  const [twoSideCameraImage, setTwoSideCameraImage] = useState<{
+    target: "front" | "back";
+    dataUrl: string;
+  } | null>(null);
+
+  const [successRecord, setSuccessRecord] = useState<UploadRecord | null>(null);
+
+  // Role-filtered Records Store
   const [records, setRecords] = useState<UploadRecord[]>([]);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0, message: "" });
 
   // Notifications
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -50,125 +55,118 @@ export default function Home() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const refreshRecords = useCallback(async () => {
-    const merged = await mockUploadService.getAllRecordsMerged();
-    setRecords(merged);
-  }, []);
+  const refreshRecords = useCallback((targetUser?: User | null) => {
+    const userToQuery = targetUser !== undefined ? targetUser : currentUser;
+    if (!userToQuery) {
+      setRecords([]);
+      return;
+    }
+    const userRecords = mockUploadService.getRecordsForUser(userToQuery);
+    setRecords(userRecords);
+  }, [currentUser]);
 
-  // Initialize Auth & Records from LocalStorage and IndexedDB
+  // Initialize Auth & Records on mount
   useEffect(() => {
     const user = mockAuthService.getCurrentUser();
     if (user) {
       setCurrentUser(user);
+      const userRecords = mockUploadService.getRecordsForUser(user);
+      setRecords(userRecords);
     }
-    refreshRecords();
     setIsInitializing(false);
-
-    // Initialize auto sync on network recovery
-    syncService.initAutoSync();
-
-    // Subscribe to sync progress events
-    const unsubProgress = syncService.subscribe((state) => {
-      setIsSyncing(state.isSyncing);
-      setSyncProgress({ current: state.current, total: state.total, message: state.message });
-      if (!state.isSyncing && state.total > 0) {
-        refreshRecords();
-        if (state.current > 0) {
-          addToast("success", "Sync Completed", state.message);
-        }
-      }
-    });
-
-    // Subscribe to individual record sync completion
-    const unsubRecord = syncService.onRecordSynced((syncedRecord) => {
-      refreshRecords();
-      addToast("success", `Uploaded ${syncedRecord.id}`, "Synchronized to cloud backend");
-    });
-
-    return () => {
-      unsubProgress();
-      unsubRecord();
-    };
-  }, [refreshRecords]);
-
-  // Track pending offline uploads count
-  const pendingCount = records.filter(
-    (r) => r.status === "Pending Upload" || r.status === "Failed" || r.status === "Uploading"
-  ).length;
+  }, []);
 
   const handleLoginSuccess = (user: User) => {
     setCurrentUser(user);
+    const userRecords = mockUploadService.getRecordsForUser(user);
+    setRecords(userRecords);
     addToast("success", `Welcome back, ${user.name}!`, `Signed in as ${user.role}`);
   };
 
   const handleLogout = () => {
     mockAuthService.logout();
     setCurrentUser(null);
+    setRecords([]);
     setCapturedImage(null);
+    setTwoSideData(null);
+    setCaptureMode("single");
     setSuccessRecord(null);
     setActiveTab("upload");
     addToast("info", "Logged out successfully");
   };
 
+  // Open camera with specific target (single, front, or back)
+  const handleOpenCamera = (target: "single" | "front" | "back" = "single") => {
+    setCameraTarget(target);
+    setIsCameraOpen(true);
+  };
+
   // Triggered when photo is snapped in live camera
   const handleCameraCapture = (dataUrl: string) => {
     setIsCameraOpen(false);
-    setCapturedImage(dataUrl);
-    addToast("info", "Photo captured", "Review details before submitting");
+    if (cameraTarget === "single") {
+      setCaptureMode("single");
+      setTwoSideData(null);
+      setCapturedImage(dataUrl);
+      addToast("info", "Photo captured", "Select document type and verify details");
+    } else {
+      setTwoSideCameraImage({ target: cameraTarget, dataUrl });
+      addToast(
+        "info",
+        `${cameraTarget === "front" ? "Front" : "Back"} Side Captured`,
+        "Ready to compose two-sided document"
+      );
+    }
   };
 
-  // Triggered when image is picked from gallery
+  // Triggered when image is picked from gallery in single mode
   const handleSelectImageFile = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       if (e.target?.result) {
+        setCaptureMode("single");
+        setTwoSideData(null);
         setCapturedImage(e.target.result as string);
-        addToast("info", "Image selected", "Review details before submitting");
+        addToast("info", "Image selected", "Select document type and verify details");
       }
     };
     reader.readAsDataURL(file);
   };
 
-  // Triggered when upload form submits successfully (online or offline)
-  const handleUploadComplete = async (newRecord: UploadRecord, isOfflineSaved: boolean) => {
-    await refreshRecords();
+  // Triggered when TwoSideCapture produces a combined collage
+  const handleTwoSideCollageReady = (
+    collage: CollageResult,
+    frontUrl: string,
+    backUrl: string
+  ) => {
+    setCaptureMode("two-sided");
+    setTwoSideData({ frontUrl, backUrl });
+    setCapturedImage(collage.blobUrl);
+    addToast(
+      "success",
+      "Two-Sided Collage Generated",
+      "Review document details and submit for IRIS OCR"
+    );
+  };
+
+  // Triggered when upload form submits successfully (online IRIS API completed)
+  const handleUploadComplete = (newRecord: UploadRecord) => {
+    if (currentUser) {
+      const updated = mockUploadService.getRecordsForUser(currentUser);
+      setRecords(updated);
+    }
     setSuccessRecord(newRecord);
-    setIsSuccessOffline(isOfflineSaved);
     setCapturedImage(null);
+    setTwoSideData(null);
+    setCaptureMode("single");
 
-    if (isOfflineSaved) {
-      addToast(
-        "info",
-        `Record ${newRecord.id} Saved Locally`,
-        "Will be uploaded automatically when connection is restored."
-      );
-    } else {
-      addToast("success", `Record ${newRecord.id} Uploaded`, "Data stored in local records");
-    }
-  };
-
-  const handleTriggerSync = async () => {
-    if (!isOnline) {
-      addToast("error", "Cannot Sync Offline", "Please restore internet connection to upload.");
-      return;
-    }
-    addToast("info", "Sync Started", "Uploading pending records to server...");
-    await syncService.syncPendingUploads();
-    await refreshRecords();
-  };
-
-  const handleSyncSingle = async (id: string) => {
-    if (!isOnline) {
-      addToast("error", "Offline", "Please restore connection before syncing.");
-      return;
-    }
-    const success = await syncService.syncSingleItem(id);
-    await refreshRecords();
-    if (success) {
-      addToast("success", `Synced ${id}`, "Successfully uploaded to backend.");
-    } else {
-      addToast("error", `Sync Failed for ${id}`, "Could not upload image right now.");
-    }
+    const confVal = newRecord.extractedData?.confidence ?? 98.8;
+    const confPct = Math.round(confVal <= 1 ? confVal * 100 : confVal);
+    addToast(
+      "success",
+      `IRIS OCR Extracted: ${newRecord.extractedData?.documentType || "Document"}`,
+      `Record ${newRecord.id} saved with ${confPct}% confidence`
+    );
   };
 
   const handleViewRecordsFromSuccess = () => {
@@ -179,6 +177,8 @@ export default function Home() {
   const handleUploadAnother = () => {
     setSuccessRecord(null);
     setCapturedImage(null);
+    setTwoSideData(null);
+    setCaptureMode("single");
     setActiveTab("upload");
   };
 
@@ -208,14 +208,6 @@ export default function Home() {
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <ToastContainer toasts={toasts} onDismiss={removeToast} />
 
-      {/* Network Status Banner & Offline Simulation Switch */}
-      <NetworkStatusBar
-        isOnline={isOnline}
-        isSimulated={isSimulatedOffline}
-        onToggleSimulation={toggleSimulation}
-        pendingCount={pendingCount}
-      />
-
       {/* Hidden native camera picker for fallback */}
       <input
         ref={nativeInputRef}
@@ -233,14 +225,14 @@ export default function Home() {
       {/* Sticky Header with User Info & Logout */}
       <AppHeader
         user={currentUser}
-        isOnline={isOnline}
-        pendingCount={pendingCount}
         onLogout={handleLogout}
         activeTab={activeTab}
         onTabChange={(tab) => {
           setActiveTab(tab);
           setCapturedImage(null);
+          setTwoSideData(null);
         }}
+        recordsCount={records.length}
       />
 
       {/* Main Content Area */}
@@ -251,21 +243,32 @@ export default function Home() {
             <UploadForm
               user={currentUser}
               imagePreviewUrl={capturedImage}
-              onCancel={() => setCapturedImage(null)}
+              captureMode={captureMode}
+              frontImageUrl={twoSideData?.frontUrl}
+              backImageUrl={twoSideData?.backUrl}
+              onCancel={() => {
+                setCapturedImage(null);
+                setTwoSideData(null);
+              }}
               onRetake={() => {
                 setCapturedImage(null);
-                setIsCameraOpen(true);
+                if (captureMode === "single") {
+                  setIsCameraOpen(true);
+                }
               }}
               onUploadSuccess={handleUploadComplete}
             />
           ) : (
             /* Main Capture / Upload Action Screen */
             <div className="max-w-xl mx-auto space-y-6 pt-2 pb-24 md:pb-12 animate-in fade-in">
-              {/* Two Prominent Action Cards: Open Camera & Upload from Gallery */}
+              {/* Action Cards supporting Single Side and Two-Sided Capture */}
               <UploadActionCards
-                onOpenCamera={() => setIsCameraOpen(true)}
+                onOpenCamera={handleOpenCamera}
                 onSelectImage={handleSelectImageFile}
                 onDirectCameraInput={handleSelectImageFile}
+                onTwoSideCollageReady={handleTwoSideCollageReady}
+                capturedCameraImage={twoSideCameraImage}
+                onCameraImageConsumed={() => setTwoSideCameraImage(null)}
               />
             </div>
           )
@@ -274,14 +277,10 @@ export default function Home() {
           <RecordsDashboard
             currentUser={currentUser}
             records={records}
-            isOnline={isOnline}
-            isSyncing={isSyncing}
-            syncProgress={syncProgress}
-            onTriggerSync={handleTriggerSync}
-            onSyncSingle={handleSyncSingle}
             onNavigateToUpload={() => {
               setActiveTab("upload");
               setCapturedImage(null);
+              setTwoSideData(null);
             }}
           />
         )}
@@ -302,7 +301,6 @@ export default function Home() {
       {successRecord && (
         <UploadSuccessModal
           record={successRecord}
-          isOfflineSaved={isSuccessOffline}
           onGoToRecords={handleViewRecordsFromSuccess}
           onUploadAnother={handleUploadAnother}
         />
@@ -314,6 +312,7 @@ export default function Home() {
         onTabChange={(tab) => {
           setActiveTab(tab);
           setCapturedImage(null);
+          setTwoSideData(null);
         }}
         recordCount={records.length}
       />
