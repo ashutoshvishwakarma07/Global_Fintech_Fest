@@ -220,130 +220,79 @@ public class EmailService {
     }
 
     private String buildHtmlEmailBody(String dateStr, Map<String, Object> stats, List<VisitingCard> cards) {
-        long total = stats.get("total") != null ? ((Number) stats.get("total")).longValue() : 0;
-        long completed = stats.get("completed") != null ? ((Number) stats.get("completed")).longValue() : 0;
-        long failed = stats.get("failed") != null ? ((Number) stats.get("failed")).longValue() : 0;
+        long totalDocs = stats.get("total") != null ? ((Number) stats.get("total")).longValue() : 0;
+        long completedDocs = stats.get("completed") != null ? ((Number) stats.get("completed")).longValue() : 0;
+        long failedDocs = stats.get("failed") != null ? ((Number) stats.get("failed")).longValue() : 0;
         double successRate = stats.get("successRate") != null ? ((Number) stats.get("successRate")).doubleValue() : 0.0;
-
-        StringBuilder cardRows = new StringBuilder();
-        if (cards != null && !cards.isEmpty()) {
-            int idx = 1;
-            for (VisitingCard card : cards) {
-                String holder = card.getCardHolderName() != null ? card.getCardHolderName() : "N/A";
-                String company = card.getCompanyName() != null ? card.getCompanyName() : "N/A";
-                String desig = card.getDesignation() != null ? card.getDesignation() : "N/A";
-                String phone = card.getExtractedMobile() != null ? card.getExtractedMobile() : "N/A";
-                String email = card.getExtractedEmail() != null ? card.getExtractedEmail() : "N/A";
-                String status = card.getOcrStatus() != null ? card.getOcrStatus().name() : "UNKNOWN";
-                String statusColor = "COMPLETED".equals(status) ? "#047857" : "#B91C1C";
-
-                cardRows.append("""
-                    <tr style="border-bottom: 1px solid #E5E7EB;">
-                        <td style="padding: 8px 10px; border: 1px solid #E5E7EB; color: #6B7280; text-align: center;">%d</td>
-                        <td style="padding: 8px 10px; border: 1px solid #E5E7EB; font-weight: 600; color: #1F2937;">%s</td>
-                        <td style="padding: 8px 10px; border: 1px solid #E5E7EB; color: #374151;">%s</td>
-                        <td style="padding: 8px 10px; border: 1px solid #E5E7EB; color: #374151;">%s</td>
-                        <td style="padding: 8px 10px; border: 1px solid #E5E7EB; color: #374151;">%s</td>
-                        <td style="padding: 8px 10px; border: 1px solid #E5E7EB; color: #374151;">%s</td>
-                        <td style="padding: 8px 10px; border: 1px solid #E5E7EB; text-align: center; color: %s; font-weight: bold;">%s</td>
-                    </tr>
-                """.formatted(idx++, holder, company, desig, phone, email, statusColor, status));
-            }
-        }
-
-        String cardsTableHtml = cardRows.length() > 0 ? """
-            <div style="margin-top: 25px;">
-                <div style="font-size: 15px; font-weight: 700; color: #1F2937; margin-bottom: 10px;">
-                    &#128179; Extracted Visiting Card Records (Tabular View)
-                </div>
-                <div style="overflow-x: auto;">
-                    <table style="width: 100%%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px;">
-                        <thead>
-                            <tr style="background-color: #1E40AF; color: #ffffff;">
-                                <th style="padding: 8px 10px; border: 1px solid #CBD5E1; text-align: center;">#</th>
-                                <th style="padding: 8px 10px; border: 1px solid #CBD5E1; text-align: left;">Card Holder Name</th>
-                                <th style="padding: 8px 10px; border: 1px solid #CBD5E1; text-align: left;">Company</th>
-                                <th style="padding: 8px 10px; border: 1px solid #CBD5E1; text-align: left;">Designation</th>
-                                <th style="padding: 8px 10px; border: 1px solid #CBD5E1; text-align: left;">Phone</th>
-                                <th style="padding: 8px 10px; border: 1px solid #CBD5E1; text-align: left;">Email</th>
-                                <th style="padding: 8px 10px; border: 1px solid #CBD5E1; text-align: center;">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            %s
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        """.formatted(cardRows.toString()) : "";
 
         return """
             <!DOCTYPE html>
             <html>
             <head>
-                <meta charset="UTF-8">
-                <style>
-                    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
-                    .card { background-color: #ffffff; border-radius: 8px; padding: 25px; max-width: 800px; margin: 0 auto; box-shadow: 0 4px 6px rgba(0,0,0,0.08); border-top: 5px solid #1E40AF; }
-                    .header { text-align: left; border-bottom: 2px solid #E5E7EB; padding-bottom: 15px; margin-bottom: 20px; }
-                    .title { font-size: 20px; font-weight: 700; color: #1F2937; margin: 0; }
-                    .subtitle { font-size: 13px; color: #6B7280; margin-top: 4px; }
-                    .stats-table { width: 100%%; border-collapse: collapse; margin: 20px 0; }
-                    .stats-table th { background-color: #F3F4F6; color: #374151; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 14px; text-align: left; border: 1px solid #E5E7EB; }
-                    .stats-table td { padding: 12px 14px; font-size: 14px; border: 1px solid #E5E7EB; color: #1F2937; }
-                    .badge-success { color: #047857; font-weight: bold; }
-                    .badge-failed { color: #B91C1C; font-weight: bold; }
-                    .footer { font-size: 12px; color: #9CA3AF; margin-top: 25px; border-top: 1px solid #E5E7EB; padding-top: 15px; }
-                </style>
+              <meta charset="utf-8">
+              <style>
+                body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 20px; }
+                .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; }
+                .header { background: #1e3a8a; color: #ffffff; padding: 20px; }
+                .header h2 { margin: 0; font-size: 18px; }
+                .header p { margin: 4px 0 0 0; font-size: 12px; opacity: 0.8; }
+                .content { padding: 20px; }
+                .stats-table { width: 100%%; border-collapse: separate; border-spacing: 8px 0; margin: 15px 0; }
+                .stat-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; text-align: center; }
+                .stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: bold; }
+                .stat-value { font-size: 20px; font-weight: bold; margin-top: 4px; }
+                .cta-box { background: #eff6ff; border-left: 4px solid #2563eb; padding: 12px 16px; border-radius: 4px; margin-top: 15px; }
+                .footer { text-align: center; padding: 15px; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; }
+              </style>
             </head>
             <body>
-                <div class="card">
-                    <div class="header">
-                        <div class="title">Global Fintech Fest (GFF) - Daily OCR Summary</div>
-                        <div class="subtitle">Report Date: <strong>%s</strong> | Automated Cron Workflow</div>
-                    </div>
-                    <p style="font-size: 14px; color: #374151; line-height: 1.5;">
-                        Hello Team Lead,<br><br>
-                        The automated daily OCR processing and audit workflow for <strong>%s</strong> has completed. Below is the summary and extracted visiting card records:
-                    </p>
-                    <table class="stats-table">
-                        <thead>
-                            <tr>
-                                <th>Metric</th>
-                                <th>Count / Value</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><strong>Total Documents Uploaded Today</strong></td>
-                                <td><strong>%d</strong></td>
-                            </tr>
-                            <tr>
-                                <td><strong>Successfully Processed (OCR Completed)</strong></td>
-                                <td><span class="badge-success">%d</span></td>
-                            </tr>
-                            <tr>
-                                <td><strong>Failed / Requires Review</strong></td>
-                                <td><span class="badge-failed">%d</span></td>
-                            </tr>
-                            <tr>
-                                <td><strong>Success Rate</strong></td>
-                                <td><strong>%.1f%%</strong></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    %s
-                    <p style="font-size: 13px; color: #4B5563;">
-                        &#128206; <strong>Attachment:</strong> Please find the detailed Excel spreadsheet attached containing both Summary & All Documents tabs with direct S3 links and full metadata.
-                    </p>
-                    <div class="footer">
-                        This is an automated report generated by the GFF Backend Scheduler Service.<br>
-                        Confidential &copy; 2026 Global Fintech Fest (GFF). All rights reserved.
-                    </div>
+              <div class="container">
+                <div class="header">
+                  <h2>Global Fintech Fest (GFF) — Daily OCR Report</h2>
+                  <p>Date: %s | Automated Daily Audit</p>
                 </div>
+                <div class="content">
+                  <p style="color: #334155; font-size: 14px; margin: 0 0 10px 0;">Hello Team Lead,</p>
+                  <p style="color: #64748b; font-size: 13px; line-height: 1.5; margin: 0 0 15px 0;">
+                    The daily visiting card OCR processing has completed. Below is today's summary:
+                  </p>
+
+                  <table class="stats-table">
+                    <tr>
+                      <td class="stat-card">
+                        <div class="stat-label">Total Cards</div>
+                        <div class="stat-value" style="color: #1e293b;">%d</div>
+                      </td>
+                      <td class="stat-card">
+                        <div class="stat-label" style="color: #16a34a;">Processed</div>
+                        <div class="stat-value" style="color: #16a34a;">%d</div>
+                      </td>
+                      <td class="stat-card">
+                        <div class="stat-label" style="color: #dc2626;">Failed</div>
+                        <div class="stat-value" style="color: #dc2626;">%d</div>
+                      </td>
+                      <td class="stat-card">
+                        <div class="stat-label" style="color: #2563eb;">Success Rate</div>
+                        <div class="stat-value" style="color: #2563eb;">%.1f%%</div>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <div class="cta-box">
+                    <p style="margin: 0; font-size: 13px; font-weight: bold; color: #1e40af;">📎 Detailed Report Attached</p>
+                    <p style="margin: 4px 0 0 0; font-size: 12px; color: #3b82f6;">
+                      All extracted contact fields (Name, Company, Phone, Email, S3 URLs) are compiled in the attached <strong>Daily_OCR_Report_%s.xlsx</strong> spreadsheet.
+                    </p>
+                  </div>
+                </div>
+                <div class="footer">
+                  Generated automatically by GFF Backend Service.<br/>
+                  Confidential &copy; 2026 Global Fintech Fest.
+                </div>
+              </div>
             </body>
             </html>
-            """.formatted(dateStr, dateStr, total, completed, failed, successRate, cardsTableHtml);
+            """.formatted(dateStr, totalDocs, completedDocs, failedDocs, successRate, dateStr);
     }
 
     private void saveReportBackupToDisk(byte[] excelBytes, String fileName) {
