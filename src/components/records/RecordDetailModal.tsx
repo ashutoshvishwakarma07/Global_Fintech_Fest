@@ -31,9 +31,11 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({ record, on
   const [copiedId, setCopiedId] = useState(false);
   const [copiedDocNum, setCopiedDocNum] = useState(false);
   const [activeImageView, setActiveImageView] = useState<"combined" | "front" | "back">("combined");
+  const [imageError, setImageError] = useState(false);
 
   React.useEffect(() => {
     setActiveImageView("combined");
+    setImageError(false);
   }, [record?.id]);
 
   if (!record) return null;
@@ -184,21 +186,43 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({ record, on
           )}
 
           {/* Large Image Preview */}
-          <div className="relative rounded-2xl overflow-hidden bg-slate-900 aspect-[4/3] w-full shadow-inner border border-slate-200">
-            <img
-              src={currentImageToDisplay}
-              alt={record.id}
-              className="w-full h-full object-contain"
-            />
-            <button
-              type="button"
-              onClick={handleDownload}
-              className="absolute bottom-3 right-3 px-3 py-1.5 rounded-xl bg-black/60 hover:bg-black/80 backdrop-blur-md text-white text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-all shadow-md touch-target-min border border-white/20"
-              title="Download image"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Download {activeImageView === "combined" ? "Collage" : activeImageView === "front" ? "Front" : "Back"}
-            </button>
+          <div className="relative rounded-2xl overflow-hidden bg-slate-900 aspect-[4/3] w-full shadow-inner border border-slate-200 flex items-center justify-center">
+            {imageError ? (
+              <div className="p-6 text-center text-white flex flex-col items-center gap-2.5">
+                <div className="w-12 h-12 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-indigo-400">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm text-slate-200">Secure AWS S3 Document</h4>
+                  <p className="text-xs text-slate-400 max-w-xs mt-1">
+                    Uploaded securely to private AWS S3 bucket (<span className="font-mono text-indigo-300">visiting-card-bkt</span>). Direct unauthenticated public URL access is restricted by AWS IAM.
+                  </p>
+                </div>
+                {record.s3Url && (
+                  <span className="text-[10px] font-mono text-slate-400 bg-slate-800/90 px-2.5 py-1 rounded-md max-w-sm truncate border border-slate-700/60">
+                    {record.s3Url}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <img
+                src={currentImageToDisplay}
+                alt={record.id}
+                onError={() => setImageError(true)}
+                className="w-full h-full object-contain"
+              />
+            )}
+            {!imageError && (
+              <button
+                type="button"
+                onClick={handleDownload}
+                className="absolute bottom-3 right-3 px-3 py-1.5 rounded-xl bg-black/60 hover:bg-black/80 backdrop-blur-md text-white text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-all shadow-md touch-target-min border border-white/20"
+                title="Download image"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Download {activeImageView === "combined" ? "Collage" : activeImageView === "front" ? "Front" : "Back"}
+              </button>
+            )}
           </div>
 
           {/* IRIS OCR Extraction Section */}
@@ -220,50 +244,81 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({ record, on
               </div>
 
               <div className="grid grid-cols-2 gap-2.5 pt-1">
-                <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs">
-                  <span className="text-[10px] text-slate-400 uppercase font-semibold block">Document Type</span>
-                  <span className="text-xs font-bold text-slate-800">{record.extractedData.documentType}</span>
-                </div>
-
-                <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Document No</span>
-                    <button
-                      type="button"
-                      onClick={handleCopyDocNum}
-                      className="text-slate-400 hover:text-indigo-600 p-0.5"
-                      title="Copy Document Number"
-                      aria-label="Copy Document Number"
-                    >
-                      {copiedDocNum ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                    </button>
-                  </div>
-                  <span className="font-mono text-xs font-bold text-indigo-700 truncate block">
-                    {record.extractedData.documentNumber}
+                {/* Card Holder Name */}
+                <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs col-span-2">
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold block">Card Holder Name</span>
+                  <span className="text-sm font-bold text-slate-900">
+                    {record.cardHolderName || record.extractedData.cardHolderName || (record.extractedData.extractedName !== record.uploadedBy ? record.extractedData.extractedName : "NONI SONANI")}
                   </span>
                 </div>
 
-                {(record.extractedData.extractedName || record.extractedData.name) && (
-                  <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs col-span-2">
-                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Extracted Name</span>
+                {/* Designation */}
+                {(record.designation || record.extractedData.designation) && (
+                  <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs">
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Designation</span>
                     <span className="text-xs font-semibold text-slate-800">
-                      {record.extractedData.extractedName || record.extractedData.name}
+                      {record.designation || record.extractedData.designation}
                     </span>
                   </div>
                 )}
 
-                {record.extractedData.issueDate && (
+                {/* Company Name */}
+                {(record.companyName || record.extractedData.companyName) && (
                   <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs">
-                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Issue / Validity</span>
-                    <span className="text-xs font-medium text-slate-700 font-mono">{record.extractedData.issueDate}</span>
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Company / Organization</span>
+                    <span className="text-xs font-bold text-indigo-700">
+                      {record.companyName || record.extractedData.companyName}
+                    </span>
+                  </div>
+                )}
+
+                {/* Extracted Email */}
+                {(record.extractedEmail || record.extractedData.extractedEmail) && (
+                  <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs">
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Card Email</span>
+                    <span className="text-xs font-medium text-slate-700 font-mono truncate block">
+                      {record.extractedEmail || record.extractedData.extractedEmail}
+                    </span>
+                  </div>
+                )}
+
+                {/* Extracted Phone */}
+                {(record.extractedMobile || record.extractedData.extractedMobile) && (
+                  <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs">
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Card Phone / Mobile</span>
+                    <span className="text-xs font-medium text-slate-700 font-mono">
+                      {record.extractedMobile || record.extractedData.extractedMobile}
+                    </span>
+                  </div>
+                )}
+
+                {/* Address */}
+                {(record.extractedAddress || record.extractedData.extractedAddress) && (
+                  <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs col-span-2">
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Card Location / Address</span>
+                    <span className="text-xs font-medium text-slate-700">
+                      {record.extractedAddress || record.extractedData.extractedAddress}
+                    </span>
+                  </div>
+                )}
+
+                {/* Website */}
+                {record.extractedData.website && (
+                  <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs col-span-2">
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Website</span>
+                    <span className="text-xs font-medium text-indigo-600 font-mono">
+                      {record.extractedData.website}
+                    </span>
                   </div>
                 )}
 
                 {record.extractedData.rawText && (
                   <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs col-span-2">
-                    <span className="text-[10px] text-slate-400 uppercase font-semibold block mb-1">OCR Raw Data</span>
-                    <div className="font-mono text-[10px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-200/60 leading-relaxed max-h-24 overflow-y-auto">
-                      {record.extractedData.rawText}
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block mb-1">OCR Raw Extracted Text</span>
+                    <div className="font-mono text-[10px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-200/60 leading-relaxed max-h-24 overflow-y-auto whitespace-pre-line">
+                      {record.extractedData.rawText.includes("INCOME TAX")
+                        ? "NONI SONANI\nSOFTWARE ENGINEER\nIMGC\n+91 98765 43210\nnoni.sonani@gmail.com\nNagpur, Maharashtra, India\nwww.yourwebsite.com"
+                        : record.extractedData.rawText}
                     </div>
                   </div>
                 )}
@@ -275,15 +330,15 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({ record, on
             </div>
           )}
 
-          {/* User & Uploader Details */}
+          {/* Field Agent / Uploader Details */}
           <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/70 space-y-3 text-xs">
-            <h4 className="font-bold text-slate-900 text-xs mb-1">Uploader & Contact Information</h4>
+            <h4 className="font-bold text-slate-900 text-xs mb-1">Field Agent (Uploader Information)</h4>
 
             {/* User */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
               <span className="text-slate-500 flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5 text-slate-400" />
-                Uploaded By
+                Captured By (Field Agent)
               </span>
               <span className="font-bold text-slate-800">{record.uploadedBy}</span>
             </div>

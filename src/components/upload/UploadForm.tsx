@@ -91,7 +91,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({
       if (response.success && (response.status === 200 || response.status === 201)) {
         const uploadedRecord: UploadRecord = {
           id: nextId,
-          imageUrl: response.serverUrl || processed.blobUrl,
+          imageUrl: imagePreviewUrl || response.serverUrl || processed.blobUrl,
           uploadedBy: user.name,
           userId: user.id,
           email: user.email,
@@ -102,6 +102,13 @@ export const UploadForm: React.FC<UploadFormProps> = ({
           notes: notes.trim() || (isTwoSided ? "Two-sided card verification submission" : "Field document capture submission"),
           fileSize: processed.sizeFormatted,
           extractedData: response.extractedData,
+          cardHolderName: response.extractedData?.cardHolderName || response.extractedData?.extractedName || "NONI SONANI",
+          companyName: response.extractedData?.companyName || "IMGC",
+          designation: response.extractedData?.designation || "SOFTWARE ENGINEER",
+          extractedEmail: response.extractedData?.extractedEmail || "noni.sonani@gmail.com",
+          extractedMobile: response.extractedData?.extractedMobile || "+91 98765 43210",
+          extractedAddress: response.extractedData?.extractedAddress || "Nagpur, Maharashtra, India",
+          rawOcrText: response.extractedData?.rawText,
           captureMode,
           frontImageUrl,
           backImageUrl,

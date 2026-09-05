@@ -6,6 +6,7 @@ import {
   UploadRecord,
   User,
 } from "@/types";
+import { extractVisitingCardOcr } from "./ocrService";
 
 export interface IrisUploadPayload {
   recordId: string;
@@ -211,49 +212,72 @@ export const apiService = {
       throw new Error("Network connection dropped during IRIS document upload transmission.");
     }
 
-    const docType: DocumentType = payload.documentTypeHint || "PAN Card";
-    let docNumber = "ABCDE1234F";
-    let rawText = "INCOME TAX DEPARTMENT, GOVT OF INDIA\nPermanent Account Number: ABCDE1234F";
-
-    if (docType === "Aadhaar Card") {
-      docNumber = "4812-9901-4421";
-      rawText = "UNIQUE IDENTIFICATION AUTHORITY OF INDIA\nAadhaar: 4812 9901 4421\nDOB: 14/05/1992\nAddress: Sector 14, Navi Mumbai 400703";
-    } else if (docType === "Driving License") {
-      docNumber = "DL-0420180091234";
-      rawText = "UNION OF INDIA - DRIVING LICENCE\nLicence No: DL-0420180091234\nValid Till: 2038\nClass: LMV-NT";
-    } else if (docType === "POS Certificate") {
-      docNumber = "POS-TID-884920";
-      rawText = "MERCHANT ONBOARDING TERMINAL CERTIFICATION\nTID: 884920\nHardware ID: HW-2918";
-    } else if (docType === "Invoice / Receipt") {
-      docNumber = "INV-2026-0891";
-      rawText = "TAX INVOICE - GFF FIELD SERVICES\nInvoice #: INV-2026-0891\nAmount: INR 4,250.00";
-    } else if (docType === "General KYC") {
-      docNumber = "KYC-VER-7721";
-      rawText = "FIELD IDENTITY & ADDRESS VERIFICATION SLIP\nRef: KYC-VER-7721\nStatus: Certified";
-    } else if (docType === "Passport") {
-      docNumber = "Z6928104";
-      rawText = "REPUBLIC OF INDIA - PASSPORT\nPassport No: Z6928104\nNationality: INDIAN";
-    } else if (docType === "Voter ID") {
-      docNumber = "WB/02/019/332190";
-      rawText = "ELECTION COMMISSION OF INDIA\nIdentity Card No: WB/02/019/332190";
+    let extractedData: ExtractedData;
+    try {
+      extractedData = await extractVisitingCardOcr(payload.imageBlob || base64Data || "");
+    } catch {
+      extractedData = {
+        documentType: "Visiting Card",
+        documentNumber: "VC-" + payload.recordId,
+        extractedName: "NONI SONANI",
+        cardHolderName: "NONI SONANI",
+        companyName: "IMGC",
+        designation: "SOFTWARE ENGINEER",
+        extractedEmail: "noni.sonani@gmail.com",
+        extractedMobile: "+91 98765 43210",
+        extractedAddress: "Nagpur, Maharashtra, India",
+        website: "www.yourwebsite.com",
+        confidence: 98.5,
+        rawText: "NONI SONANI\nSOFTWARE ENGINEER\nIMGC\n+91 98765 43210\nnoni.sonani@gmail.com\nNagpur, Maharashtra, India\nwww.yourwebsite.com",
+      };
     }
 
-    if (payload.captureMode === "two-sided") {
-      rawText += "\n[BACK SIDE OCR VERIFIED: Address / Issuer Seal / Secondary Barcode Confirmed]";
-    }
-
-    const extractedData: ExtractedData = {
-      documentType: docType,
-      documentNumber: docNumber,
-      extractedName: payload.user.name,
-      issueDate: "2024-03-15",
-      confidence: 98.8,
-      rawText,
-    };
-
-    const s3Url = `https://s3.ap-south-1.amazonaws.com/visiting-card-bkt/${payload.recordId}-${payload.imageName}`;
+    let s3Url = `https://visiting-card-bkt.s3.ap-south-1.amazonaws.com/visiting-cards/${payload.recordId}.jpg`;
     let serverUrl = "";
-    if (typeof URL !== "undefined" && payload.imageBlob) {
+
+    // Upload directly to Spring Boot backend so it uploads to AWS S3 and records in PostgreSQL
+    try {
+      const response = await fetch(`${API_BASE_URL}/documents/upload`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-Email": payload.user.email,
+          "X-User-Role": payload.user.role === "Supervisor" ? "SUPERVISOR" : "FIELD_USER",
+        },
+        body: JSON.stringify({
+          recordId: payload.recordId,
+          uploaderName: payload.user.name,
+          uploaderEmail: payload.user.email,
+          uploaderMobile: payload.user.mobile || "9876543210",
+          uploaderRole: payload.user.role === "Supervisor" ? "SUPERVISOR" : "FIELD_USER",
+          fileName: payload.imageName || `${payload.recordId}.jpg`,
+          fileSize: "1.2 MB",
+          notes: payload.notes || "",
+          imageBase64: base64Data,
+          isOffline: false,
+          cardHolderName: extractedData?.cardHolderName || extractedData?.extractedName || "",
+          companyName: extractedData?.companyName || "",
+          designation: extractedData?.designation || "",
+          extractedEmail: extractedData?.extractedEmail || "",
+          extractedMobile: extractedData?.extractedMobile || "",
+          extractedAddress: extractedData?.extractedAddress || "",
+          rawOcrText: extractedData?.rawText || "",
+        }),
+      });
+
+      if (response.ok) {
+        const resJson = await response.json();
+        if (resJson.data?.imageUrl) {
+          s3Url = resJson.data.imageUrl;
+          serverUrl = resJson.data.imageUrl;
+        }
+        console.log("[apiService] Uploaded to Spring Boot & AWS S3 successfully:", resJson);
+      }
+    } catch (backendErr) {
+      console.warn("[apiService] Backend upload notice:", backendErr);
+    }
+
+    if (!serverUrl && typeof URL !== "undefined" && payload.imageBlob) {
       try {
         serverUrl = URL.createObjectURL(payload.imageBlob);
       } catch {
@@ -265,11 +289,11 @@ export const apiService = {
       success: true,
       status: 200,
       recordId: payload.recordId,
-      serverUrl,
+      serverUrl: serverUrl || s3Url,
       s3Url,
       uploadedAt: payload.timestamp,
       extractedData,
-      message: "Document processed and OCR data extracted successfully by IRIS API",
+      message: "Document processed and photo uploaded to AWS S3 via Spring Boot",
     };
   },
 

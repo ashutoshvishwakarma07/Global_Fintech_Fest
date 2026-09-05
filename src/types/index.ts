@@ -12,6 +12,8 @@ export interface User {
 export type RecordStatus = "Uploaded" | "Verified" | "Processing" | "Failed";
 
 export type DocumentType =
+  | "Visiting Card"
+  | "Business Card"
   | "PAN Card"
   | "Aadhaar Card"
   | "Driving License"
@@ -26,6 +28,13 @@ export interface ExtractedData {
   documentNumber?: string;
   extractedName?: string;
   name?: string;
+  cardHolderName?: string;
+  companyName?: string;
+  designation?: string;
+  extractedEmail?: string;
+  extractedMobile?: string;
+  extractedAddress?: string;
+  website?: string;
   issueDate?: string;
   confidence: number; // e.g. 98.6%
   rawText?: string;
@@ -59,6 +68,7 @@ export interface UploadRecord {
   captureMode?: CaptureMode;
   frontImageUrl?: string;
   backImageUrl?: string;
+  fileSize?: string;
   s3Url?: string;
 }
 

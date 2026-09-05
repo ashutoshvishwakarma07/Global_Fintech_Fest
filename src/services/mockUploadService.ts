@@ -89,17 +89,25 @@ const INITIAL_SEED_RECORDS: UploadRecord[] = [
   },
 ];
 
+let inMemoryRecords: UploadRecord[] | null = null;
+
 export const mockUploadService = {
   getAllStoredRecords(): UploadRecord[] {
+    if (inMemoryRecords && inMemoryRecords.length > 0) {
+      return inMemoryRecords;
+    }
     if (typeof window === "undefined") return INITIAL_SEED_RECORDS;
     try {
       const stored = localStorage.getItem(RECORDS_STORAGE_KEY);
       if (!stored) {
         localStorage.setItem(RECORDS_STORAGE_KEY, JSON.stringify(INITIAL_SEED_RECORDS));
+        inMemoryRecords = [...INITIAL_SEED_RECORDS];
         return INITIAL_SEED_RECORDS;
       }
-      return JSON.parse(stored);
+      inMemoryRecords = JSON.parse(stored);
+      return inMemoryRecords || INITIAL_SEED_RECORDS;
     } catch {
+      inMemoryRecords = [...INITIAL_SEED_RECORDS];
       return INITIAL_SEED_RECORDS;
     }
   },
@@ -137,7 +145,6 @@ export const mockUploadService = {
   },
 
   saveRecord(record: UploadRecord): void {
-    if (typeof window === "undefined") return;
     const records = this.getAllStoredRecords();
     const existingIndex = records.findIndex((r) => r.id === record.id);
     let updated: UploadRecord[];
@@ -147,7 +154,32 @@ export const mockUploadService = {
     } else {
       updated = [record, ...records];
     }
-    localStorage.setItem(RECORDS_STORAGE_KEY, JSON.stringify(updated));
+    inMemoryRecords = updated;
+
+    if (typeof window === "undefined") return;
+
+    // Safely save to localStorage without crashing if browser 5MB storage quota is reached
+    try {
+      localStorage.setItem(RECORDS_STORAGE_KEY, JSON.stringify(updated));
+    } catch (quotaError) {
+      console.warn("[mockUploadService] LocalStorage quota reached, pruning heavy base64 strings:", quotaError);
+      try {
+        const pruned = updated.map((r, idx) => {
+          if (idx > 1 && r.imageUrl?.startsWith("data:")) {
+            return { ...r, imageUrl: r.s3Url || "", frontImageUrl: undefined, backImageUrl: undefined };
+          }
+          return r;
+        });
+        localStorage.setItem(RECORDS_STORAGE_KEY, JSON.stringify(pruned));
+      } catch {
+        try {
+          localStorage.removeItem(RECORDS_STORAGE_KEY);
+          localStorage.setItem(RECORDS_STORAGE_KEY, JSON.stringify([record]));
+        } catch {
+          // In-memory cache will still keep all records active during the session
+        }
+      }
+    }
   },
 
   deleteRecord(id: string): void {
