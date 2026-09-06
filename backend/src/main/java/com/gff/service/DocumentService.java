@@ -39,14 +39,13 @@ public class DocumentService {
 
     @Transactional
     public DocumentResponse createUploadRecord(DocumentUploadRequest request, User currentUser) {
-        final String finalRecordId = (request.getRecordId() != null && !request.getRecordId().trim().isEmpty())
+        String finalRecordId = (request.getRecordId() != null && !request.getRecordId().trim().isEmpty())
                 ? request.getRecordId()
-                : "REC-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 5);
+                : "IMG-" + System.currentTimeMillis();
 
         if (visitingCardRepository.existsByRecordId(finalRecordId)) {
-            VisitingCard existing = visitingCardRepository.findByRecordId(finalRecordId)
-                    .orElseThrow(() -> new ResourceNotFoundException("VisitingCard", "recordId", finalRecordId));
-            return DocumentResponse.fromEntity(existing);
+            log.warn("Record ID [{}] already exists in database. Assigning fresh unique ID to prevent upload collision.", finalRecordId);
+            finalRecordId = "IMG-" + System.currentTimeMillis();
         }
 
         String s3Key = null;

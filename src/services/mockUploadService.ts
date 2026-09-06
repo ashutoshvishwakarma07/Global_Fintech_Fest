@@ -131,17 +131,23 @@ export const mockUploadService = {
   },
 
   generateNextRecordId(): string {
+    const storedLast = typeof window !== "undefined" ? localStorage.getItem("gff_last_seq_id") : null;
+    let nextNum = storedLast ? parseInt(storedLast, 10) + 1 : 1008;
+    if (isNaN(nextNum) || nextNum <= 1007) nextNum = 1008;
+
     const allRecords = this.getAllStoredRecords();
-    const maxNum = allRecords.reduce((max, r) => {
+    allRecords.forEach((r) => {
       const match = r.id.match(/IMG-(\d+)/);
       if (match) {
         const num = parseInt(match[1], 10);
-        return num > max ? num : max;
+        if (num >= nextNum) nextNum = num + 1;
       }
-      return max;
-    }, 1000);
+    });
 
-    return `IMG-${maxNum + 1}`;
+    if (typeof window !== "undefined") {
+      localStorage.setItem("gff_last_seq_id", String(nextNum));
+    }
+    return `IMG-${nextNum}`;
   },
 
   saveRecord(record: UploadRecord): void {
