@@ -7,6 +7,7 @@ import {
   User,
 } from "@/types";
 import { extractVisitingCardOcr } from "./ocrService";
+import { authService } from "./authService";
 
 export interface IrisUploadPayload {
   recordId: string;
@@ -49,6 +50,21 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/a
 // In-memory idempotency register to prevent duplicate backend uploads
 const processedIdempotencyKeys = new Set<string>();
 
+function getAuthHeaders(user?: User | null): Record<string, string> {
+  const token = authService.getToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  if (user) {
+    headers["X-User-Email"] = user.email;
+    headers["X-User-Role"] = user.role === "Admin" ? "ADMIN" : user.role === "Supervisor" ? "SUPERVISOR" : "FIELD_USER";
+  }
+  return headers;
+}
+
 /**
  * Converts a Blob to a base64 encoded data string.
  */
@@ -81,19 +97,11 @@ export const apiService = {
    * Authenticate with Spring Boot backend (/api/v1/auth/login).
    */
   async login(email: string, password?: string) {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password: password || "Demo@123" }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || "Failed to authenticate with backend service");
+    const result = await authService.login(email, password || "");
+    if (!result.success || !result.user) {
+      throw new Error(result.error || "Authentication failed");
     }
-
-    const json = await response.json();
-    return json.data;
+    return result.user;
   },
 
   /**
@@ -124,11 +132,8 @@ export const apiService = {
 
       const response = await fetch(`${API_BASE_URL}/documents/upload`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-User-Email": item.user.email,
-          "X-User-Role": item.user.role === "Supervisor" ? "SUPERVISOR" : "FIELD_USER",
-        },
+        headers: getAuthHeaders(item.user),
+        credentials: "include",
         body: JSON.stringify(payload),
       });
 
@@ -239,17 +244,14 @@ export const apiService = {
     try {
       const response = await fetch(`${API_BASE_URL}/documents/upload`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-User-Email": payload.user.email,
-          "X-User-Role": payload.user.role === "Supervisor" ? "SUPERVISOR" : "FIELD_USER",
-        },
+        headers: getAuthHeaders(payload.user),
+        credentials: "include",
         body: JSON.stringify({
           recordId: payload.recordId,
           uploaderName: payload.user.name,
           uploaderEmail: payload.user.email,
           uploaderMobile: payload.user.mobile || "9876543210",
-          uploaderRole: payload.user.role === "Supervisor" ? "SUPERVISOR" : "FIELD_USER",
+          uploaderRole: payload.user.role === "Admin" ? "ADMIN" : payload.user.role === "Supervisor" ? "SUPERVISOR" : "FIELD_USER",
           fileName: payload.imageName || `${payload.recordId}.jpg`,
           fileSize: "1.2 MB",
           notes: payload.notes || "",
@@ -306,11 +308,18 @@ export const apiService = {
       if (query) url.searchParams.set("query", query);
       if (status && status !== "All") url.searchParams.set("status", status);
 
+      const token = authService.getToken();
+      const headers: Record<string, string> = {
+        "X-User-Email": userEmail,
+        "X-User-Role": role === "Admin" ? "ADMIN" : role === "Supervisor" ? "SUPERVISOR" : "FIELD_USER",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const response = await fetch(url.toString(), {
-        headers: {
-          "X-User-Email": userEmail,
-          "X-User-Role": role === "Supervisor" ? "SUPERVISOR" : "FIELD_USER",
-        },
+        headers,
+        credentials: "include",
       });
 
       if (!response.ok) return null;
@@ -326,7 +335,16 @@ export const apiService = {
    */
   async fetchStats() {
     try {
-      const response = await fetch(`${API_BASE_URL}/documents/stats`);
+      const token = authService.getToken();
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/documents/stats`, {
+        headers,
+        credentials: "include",
+      });
       if (!response.ok) return null;
       const json = await response.json();
       return json.data;

@@ -29,6 +29,10 @@ public interface VisitingCardRepository extends JpaRepository<VisitingCard, Long
      */
     Page<VisitingCard> findByStatus(RecordStatus status, Pageable pageable);
 
+    Page<VisitingCard> findByUploaderEmail(String uploaderEmail, Pageable pageable);
+
+    Page<VisitingCard> findByUploaderEmailAndStatus(String uploaderEmail, RecordStatus status, Pageable pageable);
+
     /**
      * Filter by uploader role.
      */
@@ -47,12 +51,25 @@ public interface VisitingCardRepository extends JpaRepository<VisitingCard, Long
     List<VisitingCard> findByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end);
 
     /**
-     * Search query matching frontend search bar (by record ID, uploader name, or email).
+     * Search query for Admin/Supervisor across all records.
      */
     @Query("SELECT v FROM VisitingCard v WHERE " +
            "(:query IS NULL OR :query = '' OR " +
            "LOWER(v.recordId) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
            "LOWER(v.uploaderName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           "LOWER(v.uploaderEmail) LIKE LOWER(CONCAT('%', :query, '%')))")
+           "LOWER(v.uploaderEmail) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(COALESCE(v.cardHolderName, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(COALESCE(v.companyName, '')) LIKE LOWER(CONCAT('%', :query, '%')))")
     Page<VisitingCard> searchRecords(@Param("query") String query, Pageable pageable);
+
+    /**
+     * Search query isolated to a specific user's uploads.
+     */
+    @Query("SELECT v FROM VisitingCard v WHERE " +
+           "v.uploaderEmail = :uploaderEmail AND " +
+           "(:query IS NULL OR :query = '' OR " +
+           "LOWER(v.recordId) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(COALESCE(v.cardHolderName, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(COALESCE(v.companyName, '')) LIKE LOWER(CONCAT('%', :query, '%')))")
+    Page<VisitingCard> searchUserRecords(@Param("uploaderEmail") String uploaderEmail, @Param("query") String query, Pageable pageable);
 }

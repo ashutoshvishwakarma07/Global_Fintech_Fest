@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { User, UploadRecord, CaptureMode } from "@/types";
-import { mockAuthService } from "@/services/mockAuthService";
+import { authService } from "@/services/authService";
 import { mockUploadService } from "@/services/mockUploadService";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -67,13 +67,25 @@ export default function Home() {
 
   // Initialize Auth & Records on mount
   useEffect(() => {
-    const user = mockAuthService.getCurrentUser();
-    if (user) {
-      setCurrentUser(user);
-      const userRecords = mockUploadService.getRecordsForUser(user);
-      setRecords(userRecords);
+    let isMounted = true;
+    async function initSession() {
+      try {
+        const user = await authService.getMe();
+        if (isMounted && user) {
+          setCurrentUser(user);
+          const userRecords = mockUploadService.getRecordsForUser(user);
+          setRecords(userRecords);
+        }
+      } catch {
+        // User not authenticated
+      } finally {
+        if (isMounted) setIsInitializing(false);
+      }
     }
-    setIsInitializing(false);
+    initSession();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleLoginSuccess = (user: User) => {
@@ -83,8 +95,8 @@ export default function Home() {
     addToast("success", `Welcome back, ${user.name}!`, `Signed in as ${user.role}`);
   };
 
-  const handleLogout = () => {
-    mockAuthService.logout();
+  const handleLogout = async () => {
+    await authService.logout();
     setCurrentUser(null);
     setRecords([]);
     setCapturedImage(null);

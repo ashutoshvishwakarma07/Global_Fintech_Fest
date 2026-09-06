@@ -3,6 +3,7 @@ package com.gff.service;
 import com.gff.dto.request.DocumentUploadRequest;
 import com.gff.dto.response.DashboardStatsResponse;
 import com.gff.dto.response.DocumentResponse;
+import com.gff.entity.User;
 import com.gff.entity.VisitingCard;
 import com.gff.entity.enums.OcrStatus;
 import com.gff.entity.enums.RecordStatus;
@@ -37,7 +38,7 @@ public class DocumentService {
     }
 
     @Transactional
-    public DocumentResponse createUploadRecord(DocumentUploadRequest request) {
+    public DocumentResponse createUploadRecord(DocumentUploadRequest request, User currentUser) {
         final String finalRecordId = (request.getRecordId() != null && !request.getRecordId().trim().isEmpty())
                 ? request.getRecordId()
                 : "REC-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 5);
@@ -73,12 +74,18 @@ public class DocumentService {
 
         boolean hasOcr = request.getCardHolderName() != null && !request.getCardHolderName().trim().isEmpty();
 
+        // Enforce verified user identity from server-side session token
+        String uploaderName = (currentUser != null && currentUser.getName() != null) ? currentUser.getName() : request.getUploaderName();
+        String uploaderEmail = (currentUser != null && currentUser.getEmail() != null) ? currentUser.getEmail() : request.getUploaderEmail();
+        UserRole uploaderRole = (currentUser != null && currentUser.getRole() != null) ? currentUser.getRole() : (request.getUploaderRole() != null ? request.getUploaderRole() : UserRole.FIELD_USER);
+        String uploaderMobile = (currentUser != null && currentUser.getMobile() != null) ? currentUser.getMobile() : request.getUploaderMobile();
+
         VisitingCard card = VisitingCard.builder()
                 .recordId(finalRecordId)
-                .uploaderName(request.getUploaderName())
-                .uploaderEmail(request.getUploaderEmail())
-                .uploaderMobile(request.getUploaderMobile())
-                .uploaderRole(request.getUploaderRole() != null ? request.getUploaderRole() : UserRole.FIELD_USER)
+                .uploaderName(uploaderName)
+                .uploaderEmail(uploaderEmail)
+                .uploaderMobile(uploaderMobile)
+                .uploaderRole(uploaderRole)
                 .fileName(request.getFileName() != null ? request.getFileName() : finalRecordId + ".jpg")
                 .fileSize(request.getFileSize())
                 .notes(request.getNotes())
@@ -113,23 +120,31 @@ public class DocumentService {
             int size) {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        boolean isPrivileged = "SUPERVISOR".equalsIgnoreCase(currentUserRole) || "ADMIN".equalsIgnoreCase(currentUserRole);
 
         Page<VisitingCard> records;
-        if (query != null && !query.trim().isEmpty()) {
-            records = visitingCardRepository.searchRecords(query.trim(), pageable);
-        } else if (status != null) {
-            records = visitingCardRepository.findByStatus(status, pageable);
+        if (isPrivileged) {
+            // Admin and Supervisor have access to all uploaded documents across all users
+            if (query != null && !query.trim().isEmpty()) {
+                records = visitingCardRepository.searchRecords(query.trim(), pageable);
+            } else if (status != null) {
+                records = visitingCardRepository.findByStatus(status, pageable);
+            } else {
+                records = visitingCardRepository.findAll(pageable);
+            }
         } else {
-            records = visitingCardRepository.findAll(pageable);
+            // Normal field user is strictly restricted to records uploaded by their own email
+            String email = (currentUserEmail != null) ? currentUserEmail.trim().toLowerCase() : "";
+            if (query != null && !query.trim().isEmpty()) {
+                records = visitingCardRepository.searchUserRecords(email, query.trim(), pageable);
+            } else if (status != null) {
+                records = visitingCardRepository.findByUploaderEmailAndStatus(email, status, pageable);
+            } else {
+                records = visitingCardRepository.findByUploaderEmail(email, pageable);
+            }
         }
 
-        boolean isSupervisor = "SUPERVISOR".equalsIgnoreCase(currentUserRole) || "ADMIN".equalsIgnoreCase(currentUserRole);
-        return records.map(card -> {
-            if (!isSupervisor && currentUserEmail != null && !currentUserEmail.equalsIgnoreCase(card.getUploaderEmail())) {
-                return null;
-            }
-            return DocumentResponse.fromEntity(card);
-        });
+        return records.map(DocumentResponse::fromEntity);
     }
 
     @Transactional(readOnly = true)
@@ -174,8 +189,8 @@ public class DocumentService {
     }
 
     private void validateOwnership(VisitingCard card, String currentUserEmail, String currentUserRole) {
-        boolean isSupervisor = "SUPERVISOR".equalsIgnoreCase(currentUserRole) || "ADMIN".equalsIgnoreCase(currentUserRole);
-        if (!isSupervisor && currentUserEmail != null && !currentUserEmail.equalsIgnoreCase(card.getUploaderEmail())) {
+        boolean isPrivileged = "SUPERVISOR".equalsIgnoreCase(currentUserRole) || "ADMIN".equalsIgnoreCase(currentUserRole);
+        if (!isPrivileged && (currentUserEmail == null || !currentUserEmail.equalsIgnoreCase(card.getUploaderEmail()))) {
             throw new ApiException("Access Denied: You do not have permission to view this document.", HttpStatus.FORBIDDEN);
         }
     }

@@ -12,3 +12,5 @@ backend/.env
 backend/.env.local
 backend/.idea/
 backend/*.iml
+
+tsconfig.tsbuildinfo

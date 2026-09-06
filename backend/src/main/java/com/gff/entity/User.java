@@ -6,7 +6,7 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 /**
- * Application user entity (Field User / Supervisor).
+ * Application user entity (Field User / Supervisor / Admin).
  */
 @Entity
 @Table(name = "app_users", indexes = {
@@ -20,6 +20,9 @@ public class User {
 
     @Column(nullable = false, unique = true)
     private String email;
+
+    @Column(name = "password_hash", length = 255)
+    private String passwordHash;
 
     @Column(nullable = false)
     private String name;
@@ -50,6 +53,7 @@ public class User {
     public static class UserBuilder {
         private Long id;
         private String email;
+        private String passwordHash;
         private String name;
         private String mobile;
         private UserRole role;
@@ -58,6 +62,7 @@ public class User {
 
         public UserBuilder id(Long id) { this.id = id; return this; }
         public UserBuilder email(String email) { this.email = email; return this; }
+        public UserBuilder passwordHash(String passwordHash) { this.passwordHash = passwordHash; return this; }
         public UserBuilder name(String name) { this.name = name; return this; }
         public UserBuilder mobile(String mobile) { this.mobile = mobile; return this; }
         public UserBuilder role(UserRole role) { this.role = role; return this; }
@@ -68,6 +73,7 @@ public class User {
             User u = new User();
             u.id = this.id;
             u.email = this.email;
+            u.passwordHash = this.passwordHash;
             u.name = this.name;
             u.mobile = this.mobile;
             u.role = this.role;
@@ -90,6 +96,9 @@ public class User {
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
+    public String getPasswordHash() { return passwordHash; }
+    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }

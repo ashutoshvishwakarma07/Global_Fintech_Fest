@@ -2,8 +2,8 @@
 
 import React, { useState } from "react";
 import { User } from "@/types";
-import { mockAuthService, DEMO_USERS } from "@/services/mockAuthService";
-import { LogIn, Lock, Mail, Shield, UserCheck, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { authService } from "@/services/authService";
+import { LogIn, Lock, Mail, Shield, AlertCircle, Eye, EyeOff } from "lucide-react";
 
 interface LoginFormProps {
   onLoginSuccess: (user: User) => void;
@@ -20,52 +20,35 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
     e.preventDefault();
     setErrorMessage(null);
 
-    if (!email.trim()) {
-      setErrorMessage("Please enter your email or username");
+    const cleanEmail = email.trim();
+    if (!cleanEmail) {
+      setErrorMessage("Please enter your email or username.");
       return;
     }
     if (!password) {
-      setErrorMessage("Please enter your password");
+      setErrorMessage("Please enter your password.");
       return;
     }
 
     setLoading(true);
     try {
-      const result = await mockAuthService.login(email, password);
+      const result = await authService.login(cleanEmail, password);
       if (result.success && result.user) {
         onLoginSuccess(result.user);
       } else {
-        setErrorMessage(result.error || "Authentication failed. Try Demo accounts below.");
+        setErrorMessage(result.error || "Authentication failed. Please check your credentials.");
       }
     } catch {
-      setErrorMessage("An unexpected error occurred. Please try again.");
+      setErrorMessage("An unexpected error occurred. Please check your connection and try again.");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleSelectDemoUser = (demoEmail: string, demoPass: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
-    setErrorMessage(null);
-  };
-
-  const getRoleBadgeStyle = (role: string) => {
-    switch (role) {
-      case "Admin":
-        return "bg-purple-100 text-purple-800 border-purple-200";
-      case "Supervisor":
-        return "bg-amber-100 text-amber-800 border-amber-200";
-      case "Field User":
-      default:
-        return "bg-blue-100 text-blue-800 border-blue-200";
     }
   };
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-gradient-to-b from-slate-50 via-white to-indigo-50/40 p-4 sm:p-6 md:p-8">
       {/* Top Brand Header */}
-      <div className="w-full max-w-md mx-auto pt-6 sm:pt-10 text-center">
+      <div className="w-full max-w-md mx-auto pt-8 sm:pt-14 text-center">
         <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-200 mb-4">
           <Shield className="w-7 h-7" />
         </div>
@@ -78,11 +61,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
       </div>
 
       {/* Main Login Card */}
-      <div className="w-full max-w-md mx-auto my-6">
+      <div className="w-full max-w-md mx-auto my-auto py-6">
         <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-card border border-slate-100">
-          <h2 className="text-lg font-semibold text-slate-900 mb-1">Welcome back</h2>
+          <h2 className="text-lg font-semibold text-slate-900 mb-1">Sign In</h2>
           <p className="text-xs sm:text-sm text-slate-500 mb-6">
-            Sign in to access document capture and records
+            Enter your credentials to access your account
           </p>
 
           {errorMessage && (
@@ -94,7 +77,10 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+              <label
+                htmlFor="email"
+                className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5"
+              >
                 Email / Username
               </label>
               <div className="relative">
@@ -103,18 +89,23 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                 </div>
                 <input
                   id="email"
-                  type="email"
+                  type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@company.com"
-                  className="w-full pl-11 pr-4 py-3 bg-slate-50 hover:bg-slate-100/60 focus:bg-white border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all touch-target-min"
-                  autoComplete="email"
+                  disabled={loading}
+                  className="w-full pl-11 pr-4 py-3 bg-slate-50 hover:bg-slate-100/60 focus:bg-white border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all touch-target-min disabled:opacity-60"
+                  autoComplete="username email"
+                  autoFocus
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+              <label
+                htmlFor="password"
+                className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5"
+              >
                 Password
               </label>
               <div className="relative">
@@ -127,7 +118,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-11 pr-11 py-3 bg-slate-50 hover:bg-slate-100/60 focus:bg-white border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all touch-target-min"
+                  disabled={loading}
+                  className="w-full pl-11 pr-11 py-3 bg-slate-50 hover:bg-slate-100/60 focus:bg-white border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all touch-target-min disabled:opacity-60"
                   autoComplete="current-password"
                 />
                 <button
@@ -135,6 +127,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 touch-target-min"
                   aria-label={showPassword ? "Hide password" : "Show password"}
+                  tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -144,10 +137,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-2 py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold text-sm rounded-xl shadow-md shadow-indigo-200 hover:shadow-lg transition-all flex items-center justify-center gap-2 touch-target-min disabled:opacity-60"
+              className="w-full mt-3 py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold text-sm rounded-xl shadow-md shadow-indigo-200 hover:shadow-lg transition-all flex items-center justify-center gap-2 touch-target-min disabled:opacity-60 cursor-pointer"
             >
               {loading ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <>
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Signing in...</span>
+                </>
               ) : (
                 <>
                   <span>Sign In</span>
@@ -156,50 +152,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
               )}
             </button>
           </form>
-
-          {/* Quick Demo Access Bar */}
-          <div className="mt-8 pt-6 border-t border-slate-100">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Select Demo Role
-              </span>
-              <span className="text-[11px] text-indigo-600 font-medium">1-Tap Autofill</span>
-            </div>
-
-            <div className="grid grid-cols-1 gap-2.5">
-              {DEMO_USERS.map((u) => (
-                <button
-                  key={u.id}
-                  type="button"
-                  onClick={() => handleSelectDemoUser(u.email, u.password)}
-                  className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all active:scale-[0.98] touch-target-min ${
-                    email === u.email
-                      ? "border-indigo-500 bg-indigo-50/70 ring-1 ring-indigo-500"
-                      : "border-slate-200 hover:border-slate-300 bg-slate-50/60"
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center shrink-0">
-                      {u.name.charAt(0)}
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                        {u.name}
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${getRoleBadgeStyle(u.role)}`}>
-                          {u.role}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-slate-500 font-mono">{u.email}</div>
-                    </div>
-                  </div>
-                  <UserCheck className="w-4 h-4 text-slate-400" />
-                </button>
-              ))}
-            </div>
-            <p className="text-[11px] text-slate-400 text-center mt-3">
-              Demo passwords: <code className="font-mono text-slate-600 bg-slate-100 px-1 py-0.5 rounded">Demo@123</code> (User 1 & 2) &bull; <code className="font-mono text-slate-600 bg-slate-100 px-1 py-0.5 rounded">Admin@123</code> (Admin)
-            </p>
-          </div>
         </div>
       </div>
 
