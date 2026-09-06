@@ -53,15 +53,21 @@ public class AuthService {
             log.warn("Notice updating role constraint: {}", e.getMessage());
         }
 
-        // Seed and migrate initial 3 users with secure BCrypt-hashed passwords
+        // 1. Delete all other users and their data from database, keeping ONLY admin@demo.com, user1@demo.com, user2@demo.com
+        try {
+            int deletedCards = jdbcTemplate.update("DELETE FROM visiting_cards WHERE uploader_email NOT IN ('admin@demo.com', 'user1@demo.com', 'user2@demo.com')");
+            log.info("Cleaned up {} visiting cards belonging to other deleted users", deletedCards);
+
+            int deletedUsers = jdbcTemplate.update("DELETE FROM app_users WHERE email NOT IN ('admin@demo.com', 'user1@demo.com', 'user2@demo.com')");
+            log.info("Deleted {} other users from app_users table", deletedUsers);
+        } catch (Exception e) {
+            log.warn("Notice during cleanup of other user data: {}", e.getMessage());
+        }
+
+        // 2. Keep only two field users (user1, user2) and one admin (admin) with guaranteed BCrypt passwords
         seedOrMigrateUser("admin@demo.com", "Admin@123", "Admin User", "9900112233", UserRole.ADMIN);
         seedOrMigrateUser("user1@demo.com", "Demo@123", "Rahul Sharma", "9876543210", UserRole.FIELD_USER);
-        seedOrMigrateUser("user2@demo.com", "Demo@123", "Priya Verma", "9812345678", UserRole.SUPERVISOR);
-
-        // Also ensure example accounts have BCrypt hashes if present
-        seedOrMigrateUser("user1@example.com", "Demo@123", "Field User One", "9876543210", UserRole.FIELD_USER);
-        seedOrMigrateUser("user2@example.com", "Demo@123", "Field User Two", "9876543211", UserRole.FIELD_USER);
-        seedOrMigrateUser("admin@example.com", "Admin@123", "Lead Supervisor", "9876543212", UserRole.ADMIN);
+        seedOrMigrateUser("user2@demo.com", "Demo@123", "Priya Verma", "9812345678", UserRole.FIELD_USER);
     }
 
     private void seedOrMigrateUser(String email, String plainPassword, String name, String mobile, UserRole role) {
@@ -69,13 +75,13 @@ public class AuthService {
             Optional<User> existingOpt = userRepository.findByEmail(email);
             if (existingOpt.isPresent()) {
                 User existing = existingOpt.get();
-                // If password hash is missing or outdated, update to BCrypt
-                if (existing.getPasswordHash() == null || !existing.getPasswordHash().startsWith("$2a$") && !existing.getPasswordHash().startsWith("$2b$")) {
-                    existing.setPasswordHash(passwordEncoder.encode(plainPassword));
-                    existing.setRole(role);
-                    userRepository.save(existing);
-                    log.info("Migrated password hash for existing user: {}", email);
-                }
+                existing.setPasswordHash(passwordEncoder.encode(plainPassword));
+                existing.setRole(role);
+                existing.setName(name);
+                existing.setMobile(mobile);
+                existing.setActive(true);
+                userRepository.save(existing);
+                log.info("Updated credentials and role for user: {} [{}]", email, role);
             } else {
                 User user = User.builder()
                         .email(email)
@@ -86,7 +92,7 @@ public class AuthService {
                         .active(true)
                         .build();
                 userRepository.save(user);
-                log.info("Seeded initial user: {} [{}] with BCrypt hash", email, role);
+                log.info("Seeded user: {} [{}] with BCrypt hash", email, role);
             }
         } catch (Exception e) {
             log.warn("Database user seeding notice for {}: {}", email, e.getMessage());
@@ -94,8 +100,13 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        String email = request.getEmail() != null ? request.getEmail().trim().toLowerCase() : "";
-        String rawPassword = request.getPassword() != null ? request.getPassword() : "";
+        String input = request.getEmail() != null ? request.getEmail().trim().toLowerCase() : "";
+        // Support both username ("admin", "user1", "user2") and full email ("admin@demo.com", etc.)
+        String email = input;
+        if (!input.contains("@") && !input.isEmpty()) {
+            email = input + "@demo.com";
+        }
+        String rawPassword = request.getPassword() != null ? request.getPassword().trim() : "";
 
         // 1. Rate limiter check for brute force protection
         rateLimiter.checkAllowed(email);
@@ -103,45 +114,37 @@ public class AuthService {
         // 2. Query database for user
         User user = userRepository.findByEmail(email).orElse(null);
 
-        // 3. Constant-time secure password verification
+        // 3. Constant-time secure password verification (checks both trimmed and verbatim)
         boolean passwordValid = false;
         if (user != null && user.getPasswordHash() != null) {
-            passwordValid = passwordEncoder.matches(rawPassword, user.getPasswordHash());
+            passwordValid = passwordEncoder.matches(rawPassword, user.getPasswordHash())
+                    || (request.getPassword() != null && passwordEncoder.matches(request.getPassword(), user.getPasswordHash()));
         }
 
         if (user == null || !passwordValid) {
             rateLimiter.recordFailure(email);
-            log.warn("Failed authentication attempt for email: {}", email);
+            log.warn("Failed authentication attempt for email/username: {} (resolved email: {})", input, email);
             throw new ApiException("Invalid username or password", HttpStatus.UNAUTHORIZED);
         }
 
-        // 4. Verify account active status
-        if (!Boolean.TRUE.equals(user.getActive())) {
-            log.warn("Authentication blocked for inactive user: {}", email);
-            throw new ApiException("User account is inactive. Please contact your administrator.", HttpStatus.FORBIDDEN);
+        if (Boolean.FALSE.equals(user.getActive())) {
+            throw new ApiException("Account is disabled. Please contact your administrator.", HttpStatus.FORBIDDEN);
         }
 
-        // 5. Successful login: reset rate limiter failures
+        // 4. Reset rate limiter on successful login
         rateLimiter.recordSuccess(email);
-
-        // 6. Generate signed JWT token
-        String token = jwtUtil.generateToken(
-                user.getId(),
-                user.getEmail(),
-                user.getName(),
-                user.getRole().name()
-        );
-
         log.info("User successfully authenticated: {} [{}]", user.getEmail(), user.getRole());
 
-        // 7. Return safe DTO without password or hash
+        // 5. Generate signed JWT token
+        String token = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole().name(), user.getName());
+
         return AuthResponse.builder()
                 .token(token)
                 .id(user.getId())
                 .email(user.getEmail())
                 .name(user.getName())
-                .mobile(user.getMobile())
                 .role(user.getRole())
+                .mobile(user.getMobile())
                 .build();
     }
 

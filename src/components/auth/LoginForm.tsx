@@ -21,18 +21,19 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
     setErrorMessage(null);
 
     const cleanEmail = email.trim();
+    const cleanPassword = password.trim();
     if (!cleanEmail) {
       setErrorMessage("Please enter your email or username.");
       return;
     }
-    if (!password) {
+    if (!cleanPassword) {
       setErrorMessage("Please enter your password.");
       return;
     }
 
     setLoading(true);
     try {
-      const result = await authService.login(cleanEmail, password);
+      const result = await authService.login(cleanEmail, cleanPassword);
       if (result.success && result.user) {
         onLoginSuccess(result.user);
       } else {
