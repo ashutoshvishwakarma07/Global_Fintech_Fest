@@ -30,10 +30,10 @@ public class OcrBatchScheduler {
      * 3. Generates the Excel spreadsheet (.xlsx) with Apache POI.
      * 4. Emails the Excel attachment to team leads via Spring Boot Mail.
      */
-    @Scheduled(cron = "${ocr.scheduler.cron:0 15,16,17 23 * * ?}", zone = "${ocr.scheduler.zone:Asia/Kolkata}")
+    @Scheduled(cron = "${ocr.scheduler.cron:0 10 12 * * ?}", zone = "${ocr.scheduler.zone:Asia/Kolkata}")
     public void runEveningOcrBatch() {
-        log.info("⏰ === Starting 11:15 PM Visiting Card OCR Batch & Email Report Job ===");
+        log.info("⏰ === Starting 12:10 PM Visiting Card OCR Batch & Email Report Job ===");
         Map<String, Object> result = dailyOcrReportScheduler.runDailyReportWorkflow();
-        log.info("=== Completed 11:15 PM Visiting Card OCR Batch & Email Report Job. Result: {} ===", result);
+        log.info("=== Completed 12:10 PM Visiting Card OCR Batch & Email Report Job. Result: {} ===", result);
     }
 }

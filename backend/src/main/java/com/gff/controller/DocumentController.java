@@ -116,6 +116,27 @@ public class DocumentController {
     }
 
     /**
+     * Trigger instant OCR extraction for a specific visiting card record.
+     */
+    @PostMapping("/record/{recordId}/ocr")
+    public ResponseEntity<ApiResponse<DocumentResponse>> extractOcrForRecord(
+            @PathVariable String recordId,
+            HttpServletRequest httpRequest) {
+
+        User currentUser = (User) httpRequest.getAttribute("currentUser");
+        if (currentUser == null) {
+            throw new ApiException("Full authentication is required to perform OCR extraction", HttpStatus.UNAUTHORIZED);
+        }
+
+        DocumentResponse record = documentService.processOcrForRecord(
+                recordId,
+                currentUser.getEmail(),
+                currentUser.getRole().name()
+        );
+        return ResponseEntity.ok(ApiResponse.success("OCR extraction processed for record " + recordId, record));
+    }
+
+    /**
      * Admin manual trigger for 11:15 PM OCR batch job.
      */
     @GetMapping("/trigger-ocr-batch")

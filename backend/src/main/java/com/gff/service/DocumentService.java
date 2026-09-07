@@ -31,10 +31,12 @@ public class DocumentService {
 
     private final VisitingCardRepository visitingCardRepository;
     private final S3Service s3Service;
+    private final DynamicOcrService dynamicOcrService;
 
-    public DocumentService(VisitingCardRepository visitingCardRepository, S3Service s3Service) {
+    public DocumentService(VisitingCardRepository visitingCardRepository, S3Service s3Service, DynamicOcrService dynamicOcrService) {
         this.visitingCardRepository = visitingCardRepository;
         this.s3Service = s3Service;
+        this.dynamicOcrService = dynamicOcrService;
     }
 
     @Transactional
@@ -162,6 +164,20 @@ public class DocumentService {
 
         validateOwnership(card, currentUserEmail, currentUserRole);
         return DocumentResponse.fromEntity(card);
+    }
+
+    @Transactional
+    public DocumentResponse processOcrForRecord(String recordId, String currentUserEmail, String currentUserRole) {
+        VisitingCard card = visitingCardRepository.findByRecordId(recordId)
+                .orElseThrow(() -> new ResourceNotFoundException("VisitingCard", "recordId", recordId));
+
+        validateOwnership(card, currentUserEmail, currentUserRole);
+
+        log.info("Triggering instant dynamic OCR extraction for recordId: {}", recordId);
+        boolean success = dynamicOcrService.processCardOcrDynamically(card);
+        VisitingCard updated = visitingCardRepository.save(card);
+        log.info("Instant OCR extraction for {} result: {}, status: {}", recordId, success, updated.getOcrStatus());
+        return DocumentResponse.fromEntity(updated);
     }
 
     @Transactional(readOnly = true)
