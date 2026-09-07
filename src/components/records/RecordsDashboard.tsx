@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { User, UploadRecord, UserRole, RecordStatus, DocumentType } from "@/types";
 import { RecordCard } from "./RecordCard";
 import { RecordTable } from "./RecordTable";
@@ -19,7 +19,142 @@ import {
   Filter,
   Users,
   Calendar,
+  ChevronDown,
+  Check,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
+
+interface UploaderDropdownProps {
+  uploaders: string[];
+  selected: string;
+  onSelect: (uploader: string) => void;
+  className?: string;
+  isMobile?: boolean;
+}
+
+const UploaderDropdown: React.FC<UploaderDropdownProps> = ({
+  uploaders,
+  selected,
+  onSelect,
+  className = "",
+  isMobile = false,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("touchstart", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const allOptions = ["All", ...uploaders];
+
+  const getLabel = (opt: string) => {
+    if (opt === "All") return `All Users (${uploaders.length})`;
+    return opt;
+  };
+
+  const getInitials = (name: string) => {
+    if (name === "All") return null;
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .substring(0, 2)
+      .toUpperCase();
+  };
+
+  return (
+    <div ref={dropdownRef} className={`relative ${className}`}>
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-all ${
+          isOpen
+            ? "border-indigo-500 ring-2 ring-indigo-500/20 bg-white text-indigo-950 shadow-sm"
+            : "border-slate-200/90 bg-slate-50 hover:bg-slate-100 text-slate-800"
+        }`}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+      >
+        <div className="flex items-center gap-2 truncate min-w-0">
+          <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] font-bold shrink-0">
+            {selected === "All" ? (
+              <Users className="w-3 h-3" />
+            ) : (
+              getInitials(selected) || <UserCheck className="w-3 h-3" />
+            )}
+          </div>
+          <span className="truncate">{getLabel(selected)}</span>
+        </div>
+        <ChevronDown
+          className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 shrink-0 ${
+            isOpen ? "rotate-180 text-indigo-600" : ""
+          }`}
+        />
+      </button>
+
+      {isOpen && (
+        <div
+          className={`absolute left-0 right-0 top-full mt-1.5 z-40 bg-white border border-slate-200/90 rounded-2xl shadow-xl overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-150 max-h-56 overflow-y-auto no-scrollbar ${
+            isMobile ? "w-full" : "min-w-[190px] w-auto max-w-[260px]"
+          }`}
+          role="listbox"
+        >
+          {allOptions.map((opt) => {
+            const isSelected = selected === opt;
+            const initials = getInitials(opt);
+            return (
+              <button
+                key={opt}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                onClick={() => {
+                  onSelect(opt);
+                  setIsOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2.5 text-xs text-left transition-colors ${
+                  isSelected
+                    ? "bg-indigo-50 text-indigo-800 font-bold"
+                    : "text-slate-700 hover:bg-slate-50 font-medium"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 truncate min-w-0">
+                  <div
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                      isSelected ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600"
+                    }`}
+                  >
+                    {opt === "All" ? (
+                      <Users className="w-3 h-3" />
+                    ) : (
+                      initials || <UserCheck className="w-3 h-3" />
+                    )}
+                  </div>
+                  <span className="truncate">{getLabel(opt)}</span>
+                </div>
+                {isSelected && <Check className="w-4 h-4 text-indigo-600 shrink-0 ml-2" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
 
 interface RecordsDashboardProps {
   currentUser: User;
@@ -51,12 +186,42 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
     return Array.from(names);
   }, [records]);
 
-  // Key metrics
+  // Key metrics: OCR Completed, OCR Pending, Failed
   const totalCount = records.length;
-  const verifiedCount = records.filter((r) => r.status === "Verified").length;
-  const latestUploadTime = useMemo(() => {
-    if (records.length === 0) return "None";
-    return records[0]?.uploadedAt || "None";
+  const ocrCompletedCount = useMemo(() => {
+    return records.filter((r) => {
+      if (r.status === "Failed") return false;
+      if (r.status === "Processing") return false;
+      return (
+        r.status === "Verified" ||
+        r.status === "Uploaded" ||
+        r.ocrStatus?.toUpperCase() === "COMPLETED" ||
+        r.ocrStatus?.toUpperCase() === "SUCCESS" ||
+        Boolean(r.extractedData)
+      );
+    }).length;
+  }, [records]);
+
+  const ocrPendingCount = useMemo(() => {
+    return records.filter((r) => {
+      if (r.status === "Failed") return false;
+      return (
+        r.status === "Processing" ||
+        r.ocrStatus?.toUpperCase() === "PENDING" ||
+        r.ocrStatus?.toUpperCase() === "PROCESSING" ||
+        (!r.extractedData && r.status !== "Verified" && r.status !== "Uploaded")
+      );
+    }).length;
+  }, [records]);
+
+  const ocrFailedCount = useMemo(() => {
+    return records.filter((r) => {
+      return (
+        r.status === "Failed" ||
+        r.ocrStatus?.toUpperCase() === "FAILED" ||
+        Boolean(r.errorMessage)
+      );
+    }).length;
   }, [records]);
 
   // Helper to extract YYYY-MM-DD from record.uploadedAt
@@ -204,48 +369,97 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
         </div>
       )}
 
-      {/* Top Metrics Row */}
+      {/* 3 OCR KPI Cards: Completed, Pending, Failed */}
       <div className="grid grid-cols-3 gap-2.5 sm:gap-4 mb-5">
-        {/* Metric 1 */}
-        <div className="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/80 shadow-card">
-          <div className="flex items-center gap-1.5 sm:gap-2 text-slate-500 mb-1">
-            <div className="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-              <FolderOpen className="w-3.5 h-3.5" />
+        {/* KPI 1: OCR Completed */}
+        <div className="bg-white rounded-2xl p-2.5 sm:p-4 border border-slate-200/80 shadow-card hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </div>
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 truncate">
+                OCR Completed
+              </span>
             </div>
-            <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider truncate">
-              {isAdmin ? "Total Records" : "My Records"}
+            <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700">
+              Done
             </span>
           </div>
-          <div className="text-lg sm:text-2xl font-black text-slate-900">{totalCount}</div>
+          <div className="flex items-baseline gap-1.5">
+            <div className="text-lg sm:text-2xl md:text-3xl font-black text-slate-900">
+              {ocrCompletedCount}
+            </div>
+            <span className="text-[10px] sm:text-xs font-bold text-emerald-600">
+              {totalCount > 0 ? `${Math.round((ocrCompletedCount / totalCount) * 100)}%` : "0%"}
+            </span>
+          </div>
+          <div className="text-[10px] sm:text-xs text-slate-400 mt-0.5 truncate">
+            Extracted & verified
+          </div>
         </div>
 
-        {/* Metric 2 */}
-        <div className="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/80 shadow-card">
-          <div className="flex items-center gap-1.5 sm:gap-2 text-slate-500 mb-1">
-            <div className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              {isAdmin ? <Users className="w-3.5 h-3.5" /> : <FileCheck className="w-3.5 h-3.5" />}
+        {/* KPI 2: OCR Pending */}
+        <div className="bg-white rounded-2xl p-2.5 sm:p-4 border border-slate-200/80 shadow-card hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </div>
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 truncate">
+                OCR Pending
+              </span>
             </div>
-            <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider truncate">
-              {isAdmin ? "Uploaders" : "Verified Docs"}
+            <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700">
+              Queue
             </span>
           </div>
-          <div className="text-lg sm:text-2xl font-black text-slate-900">
-            {isAdmin ? uniqueUploaders.length : verifiedCount}
+          <div className="flex items-baseline gap-1.5">
+            <div className="text-lg sm:text-2xl md:text-3xl font-black text-slate-900">
+              {ocrPendingCount}
+            </div>
+            <span className="text-[10px] sm:text-xs font-bold text-amber-600">
+              {ocrPendingCount > 0 ? "In progress" : "0 queue"}
+            </span>
+          </div>
+          <div className="text-[10px] sm:text-xs text-slate-400 mt-0.5 truncate">
+            Awaiting processing
           </div>
         </div>
 
-        {/* Metric 3 */}
-        <div className="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/80 shadow-card">
-          <div className="flex items-center gap-1.5 sm:gap-2 text-slate-500 mb-1">
-            <div className="w-6 h-6 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-              <Clock className="w-3.5 h-3.5" />
+        {/* KPI 3: Failed */}
+        <div className="bg-white rounded-2xl p-2.5 sm:p-4 border border-slate-200/80 shadow-card hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </div>
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 truncate">
+                Failed
+              </span>
             </div>
-            <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider truncate">
-              Latest Upload
+            <span
+              className={`hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                ocrFailedCount > 0 ? "bg-rose-50 text-rose-700" : "bg-slate-100 text-slate-500"
+              }`}
+            >
+              {ocrFailedCount > 0 ? "Alert" : "Clean"}
             </span>
           </div>
-          <div className="text-xs sm:text-sm font-bold text-slate-800 truncate font-mono mt-1">
-            {latestUploadTime}
+          <div className="flex items-baseline gap-1.5">
+            <div
+              className={`text-lg sm:text-2xl md:text-3xl font-black ${
+                ocrFailedCount > 0 ? "text-rose-600" : "text-slate-900"
+              }`}
+            >
+              {ocrFailedCount}
+            </div>
+            <span className="text-[10px] sm:text-xs font-bold text-slate-400">
+              {ocrFailedCount > 0 ? "Action needed" : "0 errors"}
+            </span>
+          </div>
+          <div className="text-[10px] sm:text-xs text-slate-400 mt-0.5 truncate">
+            Requires attention
           </div>
         </div>
       </div>
@@ -312,19 +526,12 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
                 <span className="text-slate-500 font-bold text-[11px] uppercase tracking-wider">
                   Uploaded By:
                 </span>
-                <select
-                  value={uploaderFilter}
-                  onChange={(e) => setUploaderFilter(e.target.value)}
-                  aria-label="Filter by Uploader"
-                  className="bg-slate-100 hover:bg-slate-200/70 border border-slate-200 rounded-lg py-1 px-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
-                >
-                  <option value="All">All Users ({uniqueUploaders.length})</option>
-                  {uniqueUploaders.map((name) => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
+                <UploaderDropdown
+                  uploaders={uniqueUploaders}
+                  selected={uploaderFilter}
+                  onSelect={setUploaderFilter}
+                  className="min-w-[170px]"
+                />
                 <div className="h-4 w-[1px] bg-slate-200 mx-1" />
               </div>
             )}
@@ -414,22 +621,34 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
 
       {/* Mobile Filter Bottom Sheet */}
       {isMobileFilterOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-end justify-center md:hidden animate-in fade-in">
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 md:hidden animate-in fade-in"
+          onClick={() => setIsMobileFilterOpen(false)}
+        >
           <div
-            className="w-full bg-white rounded-t-3xl p-5 shadow-2xl space-y-4 animate-in slide-in-from-bottom-5 duration-200 max-h-[85vh] overflow-y-auto safe-bottom"
+            className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl space-y-4 animate-in slide-in-from-bottom-5 duration-200 max-h-[88vh] overflow-y-auto no-scrollbar safe-bottom border border-slate-100"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Mobile Drag Indicator */}
+            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto -mt-1 mb-1 sm:hidden" />
+
+            {/* Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
-                <SlidersHorizontal className="w-4 h-4 text-indigo-600" />
-                <h3 className="text-sm font-bold text-slate-900">
-                  {isAdmin ? "Filter Records" : "Filter by Date"}
-                </h3>
+                <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                  <SlidersHorizontal className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 leading-tight">
+                    {isAdmin ? "Filter Records" : "Filter by Date"}
+                  </h3>
+                  <p className="text-[11px] text-slate-400">Refine the displayed records</p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsMobileFilterOpen(false)}
-                className="p-1 rounded-full text-slate-400 hover:text-slate-700 touch-target-min flex items-center justify-center"
+                className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 touch-target-min flex items-center justify-center transition-colors"
                 aria-label="Close filters"
               >
                 <X className="w-5 h-5" />
@@ -438,35 +657,40 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
 
             {/* Admin: Filter by Uploader */}
             {isAdmin && uniqueUploaders.length > 0 && (
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5 text-indigo-600" />
                   <span>Uploaded by Users</span>
                 </label>
-                <select
-                  value={uploaderFilter}
-                  onChange={(e) => setUploaderFilter(e.target.value)}
-                  className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="All">All Users ({uniqueUploaders.length})</option>
-                  {uniqueUploaders.map((name) => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
+                <UploaderDropdown
+                  uploaders={uniqueUploaders}
+                  selected={uploaderFilter}
+                  onSelect={setUploaderFilter}
+                  isMobile
+                />
               </div>
             )}
 
             {/* Date Filter (Both for Admin and Users) */}
-            <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Date Filter</span>
-              </label>
+            <div className="bg-slate-50/80 rounded-2xl p-3.5 border border-slate-200/70 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Date Range</span>
+                </label>
+                {(startDate || endDate || datePreset !== "all") && (
+                  <button
+                    type="button"
+                    onClick={() => handleSetDatePreset("all")}
+                    className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800"
+                  >
+                    Reset Date
+                  </button>
+                )}
+              </div>
 
               {/* Quick Presets */}
-              <div className="grid grid-cols-4 gap-1.5 mb-3">
+              <div className="grid grid-cols-4 gap-1.5">
                 {(
                   [
                     { id: "all", label: "All" },
@@ -484,7 +708,7 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
                         ? "bg-indigo-600 text-white shadow-sm"
                         : datePreset === p.id && p.id !== "all"
                         ? "bg-indigo-600 text-white shadow-sm"
-                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                        : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-100"
                     }`}
                   >
                     {p.label}
@@ -493,9 +717,11 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
               </div>
 
               {/* Custom Date Range Inputs */}
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 pt-1">
                 <div>
-                  <span className="block text-[11px] font-semibold text-slate-500 mb-1">From:</span>
+                  <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    From Date
+                  </span>
                   <input
                     type="date"
                     value={startDate}
@@ -503,11 +729,13 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
                       setStartDate(e.target.value);
                       setDatePreset("all");
                     }}
-                    className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
                 <div>
-                  <span className="block text-[11px] font-semibold text-slate-500 mb-1">To:</span>
+                  <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    To Date
+                  </span>
                   <input
                     type="date"
                     value={endDate}
@@ -515,25 +743,25 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
                       setEndDate(e.target.value);
                       setDatePreset("all");
                     }}
-                    className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
               </div>
             </div>
 
             {/* Actions */}
-            <div className="pt-3 flex gap-2">
+            <div className="pt-2 flex gap-2">
               <button
                 type="button"
                 onClick={handleResetFilters}
-                className="flex-1 py-3 px-4 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold touch-target-min"
+                className="flex-1 py-3 px-4 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 active:scale-[0.98] transition-all touch-target-min"
               >
-                Reset
+                Reset All
               </button>
               <button
                 type="button"
                 onClick={() => setIsMobileFilterOpen(false)}
-                className="flex-1 py-3 px-4 rounded-xl bg-indigo-600 text-white text-xs font-bold touch-target-min shadow-md shadow-indigo-200"
+                className="flex-1 py-3 px-4 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 active:scale-[0.98] transition-all touch-target-min shadow-md shadow-indigo-200"
               >
                 Apply Filters
               </button>
