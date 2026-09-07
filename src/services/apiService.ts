@@ -45,7 +45,7 @@ export interface ApiUploadResponse {
   ocrStatus?: string;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://18.60.179.46:8080/api/v1";
 
 // In-memory idempotency register to prevent duplicate backend uploads
 const processedIdempotencyKeys = new Set<string>();

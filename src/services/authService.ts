@@ -1,6 +1,6 @@
 import { User, UserRole } from "@/types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://18.60.179.46:8080/api/v1";
 const TOKEN_KEY = "gff_auth_token";
 
 export interface LoginResult {
