@@ -9,7 +9,6 @@ import { EmptyState } from "../common/EmptyState";
 import {
   Search,
   SlidersHorizontal,
-  ArrowUpDown,
   FolderOpen,
   Clock,
   UserCheck,
@@ -19,6 +18,7 @@ import {
   FileCheck,
   Filter,
   Users,
+  Calendar,
 } from "lucide-react";
 
 interface RecordsDashboardProps {
@@ -34,9 +34,9 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [uploaderFilter, setUploaderFilter] = useState<string>("All");
-  const [docTypeFilter, setDocTypeFilter] = useState<string>("All");
-  const [statusFilter, setStatusFilter] = useState<"All" | RecordStatus>("All");
-  const [sortBy, setSortBy] = useState<"latest" | "oldest">("latest");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+  const [datePreset, setDatePreset] = useState<"all" | "today" | "yesterday" | "week">("all");
   const [selectedRecord, setSelectedRecord] = useState<UploadRecord | null>(null);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
@@ -51,16 +51,6 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
     return Array.from(names);
   }, [records]);
 
-  // Document types available in the records
-  const availableDocTypes: (DocumentType | "All")[] = [
-    "All",
-    "PAN Card",
-    "Aadhaar Card",
-    "Driving License",
-    "Passport",
-    "Voter ID",
-  ];
-
   // Key metrics
   const totalCount = records.length;
   const verifiedCount = records.filter((r) => r.status === "Verified").length;
@@ -68,6 +58,52 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
     if (records.length === 0) return "None";
     return records[0]?.uploadedAt || "None";
   }, [records]);
+
+  // Helper to extract YYYY-MM-DD from record.uploadedAt
+  const getRecordDateString = (uploadedAt: string): string => {
+    if (!uploadedAt) return "";
+    const match = uploadedAt.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (match) return match[1];
+    const d = new Date(uploadedAt);
+    if (!isNaN(d.getTime())) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+    return "";
+  };
+
+  const handleSetDatePreset = (preset: "all" | "today" | "yesterday" | "week") => {
+    setDatePreset(preset);
+    const now = new Date();
+    const formatDate = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    if (preset === "all") {
+      setStartDate("");
+      setEndDate("");
+    } else if (preset === "today") {
+      const todayStr = formatDate(now);
+      setStartDate(todayStr);
+      setEndDate(todayStr);
+    } else if (preset === "yesterday") {
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yestStr = formatDate(yesterday);
+      setStartDate(yestStr);
+      setEndDate(yestStr);
+    } else if (preset === "week") {
+      const weekAgo = new Date(now);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      setStartDate(formatDate(weekAgo));
+      setEndDate(formatDate(now));
+    }
+  };
 
   // Filter & Sort Logic
   const filteredRecords = useMemo(() => {
@@ -99,47 +135,46 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
           }
         }
 
-        // Admin Uploader filter
+        // Admin: Filter by Uploader
         if (isAdmin && uploaderFilter !== "All" && record.uploadedBy !== uploaderFilter) {
           return false;
         }
 
-        // Document Type filter
-        if (
-          docTypeFilter !== "All" &&
-          record.extractedData?.documentType !== docTypeFilter
-        ) {
-          return false;
-        }
-
-        // Status filter
-        if (statusFilter !== "All" && record.status !== statusFilter) {
-          return false;
+        // Date filter
+        if (startDate || endDate) {
+          const recDate = getRecordDateString(record.uploadedAt);
+          if (recDate) {
+            if (startDate && endDate) {
+              if (recDate < startDate || recDate > endDate) return false;
+            } else if (startDate && !endDate) {
+              if (recDate !== startDate) return false;
+            } else if (!startDate && endDate) {
+              if (recDate > endDate) return false;
+            }
+          } else {
+            return false;
+          }
         }
 
         return true;
       })
       .sort((a, b) => {
-        if (sortBy === "latest") {
-          return b.uploadedAt.localeCompare(a.uploadedAt);
-        } else {
-          return a.uploadedAt.localeCompare(b.uploadedAt);
-        }
+        return b.uploadedAt.localeCompare(a.uploadedAt);
       });
-  }, [records, searchQuery, uploaderFilter, docTypeFilter, statusFilter, sortBy, isAdmin]);
+  }, [records, searchQuery, uploaderFilter, startDate, endDate, isAdmin]);
 
   const hasActiveFilters =
-    uploaderFilter !== "All" ||
-    docTypeFilter !== "All" ||
-    statusFilter !== "All" ||
+    (isAdmin && uploaderFilter !== "All") ||
+    startDate !== "" ||
+    endDate !== "" ||
     searchQuery.trim() !== "";
 
   const handleResetFilters = () => {
     setSearchQuery("");
     setUploaderFilter("All");
-    setDocTypeFilter("All");
-    setStatusFilter("All");
-    setSortBy("latest");
+    setStartDate("");
+    setEndDate("");
+    setDatePreset("all");
   };
 
   return (
@@ -268,21 +303,22 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
         </div>
 
         {/* Desktop Filter Row */}
-        <div className="hidden md:flex items-center justify-between pt-2 border-t border-slate-100 text-xs gap-3 flex-wrap">
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="hidden md:flex items-center justify-between pt-2.5 border-t border-slate-100 text-xs gap-3 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap">
             {/* Admin: Filter by Uploader */}
             {isAdmin && uniqueUploaders.length > 0 && (
-              <>
-                <span className="text-slate-400 font-medium text-[11px] uppercase tracking-wider">
-                  Uploader:
+              <div className="flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5 text-indigo-600" />
+                <span className="text-slate-500 font-bold text-[11px] uppercase tracking-wider">
+                  Uploaded By:
                 </span>
                 <select
                   value={uploaderFilter}
                   onChange={(e) => setUploaderFilter(e.target.value)}
                   aria-label="Filter by Uploader"
-                  className="bg-slate-100 border border-slate-200 rounded-lg py-1 px-2.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="bg-slate-100 hover:bg-slate-200/70 border border-slate-200 rounded-lg py-1 px-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
                 >
-                  <option value="All">All Uploaders ({uniqueUploaders.length})</option>
+                  <option value="All">All Users ({uniqueUploaders.length})</option>
                   {uniqueUploaders.map((name) => (
                     <option key={name} value={name}>
                       {name}
@@ -290,61 +326,89 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
                   ))}
                 </select>
                 <div className="h-4 w-[1px] bg-slate-200 mx-1" />
-              </>
+              </div>
             )}
 
-            {/* Filter by Document Type */}
-            <span className="text-slate-400 font-medium text-[11px] uppercase tracking-wider">
-              Doc Type:
-            </span>
-            <select
-              value={docTypeFilter}
-              onChange={(e) => setDocTypeFilter(e.target.value)}
-              aria-label="Filter by Document Type"
-              className="bg-slate-100 border border-slate-200 rounded-lg py-1 px-2.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            >
-              {availableDocTypes.map((dt) => (
-                <option key={dt} value={dt}>
-                  {dt}
-                </option>
-              ))}
-            </select>
+            {/* Date Filter (Both for Admin and Regular Users) */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 text-slate-500">
+                <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                <span className="font-bold text-[11px] uppercase tracking-wider">Date:</span>
+              </div>
 
-            <div className="h-4 w-[1px] bg-slate-200 mx-1" />
+              {/* Quick Presets */}
+              <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-lg">
+                {(
+                  [
+                    { id: "all", label: "All" },
+                    { id: "today", label: "Today" },
+                    { id: "yesterday", label: "Yesterday" },
+                    { id: "week", label: "Last 7D" },
+                  ] as const
+                ).map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => handleSetDatePreset(p.id)}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                      datePreset === p.id && !startDate && !endDate && p.id === "all"
+                        ? "bg-white text-indigo-600 shadow-xs"
+                        : datePreset === p.id && p.id !== "all"
+                        ? "bg-white text-indigo-600 shadow-xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
 
-            {/* Status Filter */}
-            <span className="text-slate-400 font-medium text-[11px] uppercase tracking-wider">
-              Status:
-            </span>
-            {(["All", "Uploaded", "Verified"] as const).map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setStatusFilter(s)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
-                  statusFilter === s
-                    ? "bg-indigo-600 text-white shadow-xs"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-              >
-                {s}
-              </button>
-            ))}
+              {/* Date Inputs */}
+              <div className="flex items-center gap-1">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                    setDatePreset("all");
+                  }}
+                  aria-label="Filter from date"
+                  className="bg-slate-100 border border-slate-200 rounded-lg py-1 px-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+                <span className="text-slate-400 text-[11px]">to</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => {
+                    setEndDate(e.target.value);
+                    setDatePreset("all");
+                  }}
+                  aria-label="Filter to date"
+                  className="bg-slate-100 border border-slate-200 rounded-lg py-1 px-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+                {(startDate || endDate) && (
+                  <button
+                    type="button"
+                    onClick={() => handleSetDatePreset("all")}
+                    className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                    title="Clear date filter"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* Sort Dropdown */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as "latest" | "oldest")}
-              aria-label="Sort records"
-              className="bg-slate-100 border border-slate-200 rounded-lg py-1 px-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
             >
-              <option value="latest">Sort: Latest First</option>
-              <option value="oldest">Sort: Oldest First</option>
-            </select>
-          </div>
+              Reset Filters
+            </button>
+          )}
         </div>
       </div>
 
@@ -358,7 +422,9 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <SlidersHorizontal className="w-4 h-4 text-indigo-600" />
-                <h3 className="text-sm font-bold text-slate-900">Filter & Sort Records</h3>
+                <h3 className="text-sm font-bold text-slate-900">
+                  {isAdmin ? "Filter Records" : "Filter by Date"}
+                </h3>
               </div>
               <button
                 type="button"
@@ -370,18 +436,19 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
               </button>
             </div>
 
-            {/* Admin: Uploader Filter */}
+            {/* Admin: Filter by Uploader */}
             {isAdmin && uniqueUploaders.length > 0 && (
               <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
-                  Filter by Uploader
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Uploaded by Users</span>
                 </label>
                 <select
                   value={uploaderFilter}
                   onChange={(e) => setUploaderFilter(e.target.value)}
-                  className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800"
+                  className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  <option value="All">All Uploaders</option>
+                  <option value="All">All Users ({uniqueUploaders.length})</option>
                   {uniqueUploaders.map((name) => (
                     <option key={name} value={name}>
                       {name}
@@ -391,75 +458,66 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
               </div>
             )}
 
-            {/* Document Type Filter */}
+            {/* Date Filter (Both for Admin and Users) */}
             <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
-                Document Type
+              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Date Filter</span>
               </label>
-              <select
-                value={docTypeFilter}
-                onChange={(e) => setDocTypeFilter(e.target.value)}
-                className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800"
-              >
-                {availableDocTypes.map((dt) => (
-                  <option key={dt} value={dt}>
-                    {dt}
-                  </option>
-                ))}
-              </select>
-            </div>
 
-            {/* Status Filter */}
-            <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
-                Filter By Status
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {(["All", "Uploaded", "Verified"] as const).map((s) => (
+              {/* Quick Presets */}
+              <div className="grid grid-cols-4 gap-1.5 mb-3">
+                {(
+                  [
+                    { id: "all", label: "All" },
+                    { id: "today", label: "Today" },
+                    { id: "yesterday", label: "Yesterday" },
+                    { id: "week", label: "Last 7D" },
+                  ] as const
+                ).map((p) => (
                   <button
-                    key={s}
+                    key={p.id}
                     type="button"
-                    onClick={() => setStatusFilter(s)}
-                    className={`py-2 px-2 text-center rounded-xl text-xs font-semibold touch-target-min transition-all ${
-                      statusFilter === s
+                    onClick={() => handleSetDatePreset(p.id)}
+                    className={`py-2 px-1 text-center rounded-xl text-xs font-semibold transition-all ${
+                      datePreset === p.id && !startDate && !endDate && p.id === "all"
                         ? "bg-indigo-600 text-white shadow-sm"
-                        : "bg-slate-100 text-slate-700"
+                        : datePreset === p.id && p.id !== "all"
+                        ? "bg-indigo-600 text-white shadow-sm"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                     }`}
                   >
-                    {s}
+                    {p.label}
                   </button>
                 ))}
               </div>
-            </div>
 
-            {/* Sort Filter */}
-            <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
-                Sort Order
-              </label>
+              {/* Custom Date Range Inputs */}
               <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSortBy("latest")}
-                  className={`py-2 px-2 text-center rounded-xl text-xs font-semibold touch-target-min transition-all ${
-                    sortBy === "latest"
-                      ? "bg-indigo-600 text-white shadow-sm"
-                      : "bg-slate-100 text-slate-700"
-                  }`}
-                >
-                  Latest First
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSortBy("oldest")}
-                  className={`py-2 px-2 text-center rounded-xl text-xs font-semibold touch-target-min transition-all ${
-                    sortBy === "oldest"
-                      ? "bg-indigo-600 text-white shadow-sm"
-                      : "bg-slate-100 text-slate-700"
-                  }`}
-                >
-                  Oldest First
-                </button>
+                <div>
+                  <span className="block text-[11px] font-semibold text-slate-500 mb-1">From:</span>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => {
+                      setStartDate(e.target.value);
+                      setDatePreset("all");
+                    }}
+                    className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <span className="block text-[11px] font-semibold text-slate-500 mb-1">To:</span>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => {
+                      setEndDate(e.target.value);
+                      setDatePreset("all");
+                    }}
+                    className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
               </div>
             </div>
 

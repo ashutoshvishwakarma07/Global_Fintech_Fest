@@ -1,5 +1,5 @@
 @echo off
-set "JAVA_HOME=C:\Program Files\JetBrains\IntelliJ IDEA 2026.1.4\jbr"
+set "JAVA_HOME=C:\Program Files\Android\Android Studio\jbr"
 set "PATH=%JAVA_HOME%\bin;%PATH%"
 set "DB_URL=jdbc:postgresql://18.60.179.46:5432/visiting_card_db"
 set "DB_USERNAME=visiting_card"
