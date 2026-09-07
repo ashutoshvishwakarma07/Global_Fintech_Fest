@@ -65,11 +65,15 @@ public class DocumentService {
                 }
 
                 byte[] imageBytes = java.util.Base64.getDecoder().decode(base64Str.trim());
-                s3Key = "visiting-cards/" + finalRecordId + ".jpg";
-                imageUrl = s3Service.uploadDirectToS3(imageBytes, s3Key, contentType);
-                log.info("Uploaded card photo to AWS S3: {}", imageUrl);
+                String candidateKey = "visiting-cards/" + finalRecordId + ".jpg";
+                String uploadedUrl = s3Service.uploadDirectToS3(imageBytes, candidateKey, contentType);
+                if (uploadedUrl != null && !uploadedUrl.trim().isEmpty()) {
+                    s3Key = candidateKey;
+                    imageUrl = uploadedUrl;
+                    log.info("Uploaded card photo to AWS S3: {}", imageUrl);
+                }
             } catch (Exception e) {
-                log.error("Failed to upload image to S3: {}", e.getMessage(), e);
+                log.error("Failed to upload image to S3 for record [{}]: {}", finalRecordId, e.getMessage(), e);
             }
         }
 
@@ -178,6 +182,15 @@ public class DocumentService {
         VisitingCard updated = visitingCardRepository.save(card);
         log.info("Instant OCR extraction for {} result: {}, status: {}", recordId, success, updated.getOcrStatus());
         return DocumentResponse.fromEntity(updated);
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] getCardImageBytes(String recordId) {
+        VisitingCard card = visitingCardRepository.findByRecordId(recordId).orElse(null);
+        if (card == null || card.getS3Key() == null || card.getS3Key().trim().isEmpty()) {
+            return null;
+        }
+        return s3Service.getObjectBytes(card.getS3Key());
     }
 
     @Transactional(readOnly = true)

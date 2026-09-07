@@ -49,6 +49,7 @@ public class AuthService {
     public void seedInitialUsers() {
         try {
             jdbcTemplate.execute("ALTER TABLE app_users DROP CONSTRAINT IF EXISTS app_users_role_check");
+            jdbcTemplate.execute("ALTER TABLE visiting_cards DROP CONSTRAINT IF EXISTS visiting_cards_uploader_role_check");
         } catch (Exception e) {
             log.warn("Notice updating role constraint: {}", e.getMessage());
         }

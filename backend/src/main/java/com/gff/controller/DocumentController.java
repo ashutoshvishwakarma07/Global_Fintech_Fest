@@ -12,6 +12,7 @@ import com.gff.scheduler.OcrBatchScheduler;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -146,5 +147,19 @@ public class DocumentController {
                 "Visiting Card OCR Batch & Email Report triggered successfully",
                 Map.of("status", "SUCCESS", "message", "Processed all pending visiting cards and generated daily report")
         ));
+    }
+    /**
+     * Stream visiting card image directly from S3.
+     */
+    @GetMapping("/record/{recordId}/image")
+    public ResponseEntity<byte[]> getRecordImage(@PathVariable String recordId) {
+        byte[] imageBytes = documentService.getCardImageBytes(recordId);
+        if (imageBytes == null || imageBytes.length == 0) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_TYPE, "image/jpeg")
+                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400")
+                .body(imageBytes);
     }
 }

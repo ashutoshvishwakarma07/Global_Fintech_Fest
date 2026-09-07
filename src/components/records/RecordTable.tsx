@@ -3,6 +3,7 @@
 import React from "react";
 import { UploadRecord } from "@/types";
 import { ExternalLink, Shield, CheckCircle2, FileText } from "lucide-react";
+import { getDisplayImageUrl } from "@/utils/imageUrl";
 
 interface RecordTableProps {
   records: UploadRecord[];
@@ -59,7 +60,7 @@ export const RecordTable: React.FC<RecordTableProps> = ({ records, onSelect }) =
                   <td className="py-3 px-4">
                     <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
                       <img
-                        src={record.imageUrl}
+                        src={getDisplayImageUrl(record)}
                         alt={record.id}
                         className="w-full h-full object-cover"
                         loading="lazy"

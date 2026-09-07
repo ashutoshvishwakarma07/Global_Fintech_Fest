@@ -21,6 +21,7 @@ import {
   Calendar,
   Hash,
 } from "lucide-react";
+import { getDisplayImageUrl } from "@/utils/imageUrl";
 
 interface RecordDetailModalProps {
   record: UploadRecord | null;
@@ -56,7 +57,7 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({ record, on
     }
   };
 
-  const currentImageToDisplay =
+  const rawImage =
     record.captureMode === "two-sided"
       ? activeImageView === "front"
         ? record.frontImageUrl || record.imageUrl
@@ -64,6 +65,8 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({ record, on
         ? record.backImageUrl || record.imageUrl
         : record.imageUrl
       : record.imageUrl;
+
+  const currentImageToDisplay = getDisplayImageUrl({ id: record.id, imageUrl: rawImage });
 
   const handleDownload = () => {
     const link = document.createElement("a");

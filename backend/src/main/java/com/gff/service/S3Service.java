@@ -21,6 +21,14 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.ResponseBytes;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+
 /**
  * Service for uploading documents directly to AWS S3
  * and supporting presigned URL uploads.
@@ -159,6 +167,39 @@ public class S3Service {
         }
 
         log.info("Document uploaded to S3 successfully");
+    }
+
+    /**
+     * Downloads object bytes directly from AWS S3 using AWS SDK S3Client.
+     */
+    public byte[] getObjectBytes(String objectKey) {
+        if (objectKey == null || objectKey.trim().isEmpty()) {
+            return null;
+        }
+        if (objectKey.startsWith("/")) {
+            objectKey = objectKey.substring(1);
+        }
+        if (accessKey == null || accessKey.trim().isEmpty() || secretKey == null || secretKey.trim().isEmpty()) {
+            log.warn("AWS credentials not configured, cannot fetch S3 object: {}", objectKey);
+            return null;
+        }
+
+        try (S3Client s3Client = S3Client.builder()
+                .region(Region.of(region))
+                .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey)))
+                .build()) {
+
+            GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(objectKey)
+                    .build();
+
+            ResponseBytes<GetObjectResponse> responseBytes = s3Client.getObjectAsBytes(getObjectRequest);
+            return responseBytes.asByteArray();
+        } catch (Exception e) {
+            log.error("Failed to retrieve S3 object [{}] from bucket [{}]: {}", objectKey, bucketName, e.getMessage());
+            return null;
+        }
     }
 
     private byte[] sha256(byte[] data) throws Exception {

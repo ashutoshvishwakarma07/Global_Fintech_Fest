@@ -14,6 +14,7 @@ import {
   Hash,
   User,
 } from "lucide-react";
+import { getDisplayImageUrl } from "@/utils/imageUrl";
 
 interface UploadSuccessModalProps {
   record: UploadRecord;
@@ -127,7 +128,7 @@ export const UploadSuccessModal: React.FC<UploadSuccessModalProps> = ({
         {/* Mini Preview Box */}
         <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3 mb-5 text-left flex items-center gap-3">
           <img
-            src={record.imageUrl}
+            src={getDisplayImageUrl(record)}
             alt="Uploaded preview"
             className="w-14 h-14 rounded-xl object-cover border border-slate-200 shrink-0"
           />

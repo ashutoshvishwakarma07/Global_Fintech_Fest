@@ -74,10 +74,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String uri = request.getRequestURI();
         String method = request.getMethod();
 
-        // Always allow CORS preflights, health checks, login, and static error paths
+        // Always allow CORS preflights, health checks, login, image streaming, and static error paths
         if ("OPTIONS".equalsIgnoreCase(method)
                 || uri.endsWith("/health")
                 || uri.endsWith("/auth/login")
+                || uri.contains("/image")
                 || uri.contains("/error")) {
             filterChain.doFilter(request, response);
             return;

@@ -10,6 +10,8 @@ backend/target/
 backend/reports/
 backend/.env
 backend/.env.local
+backend/run_backend.bat
+backend/build.bat
 backend/.idea/
 backend/*.iml
 

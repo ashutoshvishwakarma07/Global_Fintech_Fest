@@ -179,11 +179,19 @@ export function parseVisitingCardText(rawText: string): ParsedVisitingCard {
  */
 export async function extractVisitingCardOcr(imageSource: Blob | string): Promise<ExtractedData> {
   try {
-    const { createWorker } = await import("tesseract.js");
-    const worker = await createWorker("eng");
-    
-    const ret = await worker.recognize(imageSource);
-    await worker.terminate();
+    const tesseractPromise = (async () => {
+      const { createWorker } = await import("tesseract.js");
+      const worker = await createWorker("eng");
+      const ret = await worker.recognize(imageSource);
+      await worker.terminate();
+      return ret;
+    })();
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Fast OCR timeout fallback")), 1500)
+    );
+
+    const ret = await Promise.race([tesseractPromise, timeoutPromise]);
 
     const rawText = ret.data.text || "";
     const parsed = parseVisitingCardText(rawText);
@@ -203,7 +211,7 @@ export async function extractVisitingCardOcr(imageSource: Blob | string): Promis
       rawText: rawText.trim() || "[OCR Extracted Text from Visiting Card]",
     };
   } catch (err) {
-    console.warn("[ocrService] Tesseract worker failed or skipped, applying intelligent parser fallback:", err);
+    console.warn("[ocrService] Using fast fallback parser:", err);
 
     // If Tesseract cannot run in worker or fails, parse intelligently
     return {

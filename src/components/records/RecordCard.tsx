@@ -12,6 +12,7 @@ import {
   FileText,
   Sparkles,
 } from "lucide-react";
+import { getDisplayImageUrl } from "@/utils/imageUrl";
 
 interface RecordCardProps {
   record: UploadRecord;
@@ -48,7 +49,7 @@ export const RecordCard: React.FC<RecordCardProps> = ({ record, onSelect }) => {
       <div className="flex items-start gap-3.5">
         <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
           <img
-            src={record.imageUrl}
+            src={getDisplayImageUrl(record)}
             alt={record.id}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             loading="lazy"

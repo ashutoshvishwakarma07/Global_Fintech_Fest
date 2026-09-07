@@ -211,8 +211,6 @@ export const apiService = {
       });
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 750));
-
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       throw new Error("Network connection dropped during IRIS document upload transmission.");
     }
