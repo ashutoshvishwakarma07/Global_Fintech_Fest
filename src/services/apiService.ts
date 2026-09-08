@@ -2,12 +2,13 @@ import {
   CaptureMode,
   DocumentType,
   ExtractedData,
+  ManagedUser,
   QueuedUploadItem,
   UploadRecord,
   User,
 } from "@/types";
 import { extractVisitingCardOcr } from "./ocrService";
-import { authService } from "./authService";
+import { authService, normalizeUserRole } from "./authService";
 
 export interface IrisUploadPayload {
   recordId: string;
@@ -45,7 +46,7 @@ export interface ApiUploadResponse {
   ocrStatus?: string;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://18.60.179.46:8080/api/v1";
+import { API_BASE_URL } from "@/config/apiConfig";
 
 // In-memory idempotency register to prevent duplicate backend uploads
 const processedIdempotencyKeys = new Set<string>();
@@ -349,5 +350,226 @@ export const apiService = {
     } catch {
       return null;
     }
+  },
+
+  /**
+   * Admin API: Get all users with optional filtering (/api/v1/admin/users)
+   */
+  async getAdminUsers(search?: string, role?: string, active?: boolean): Promise<ManagedUser[]> {
+    try {
+      const token = authService.getToken();
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const params = new URLSearchParams();
+      if (search && search.trim()) params.append("search", search.trim());
+      if (role && role !== "All") params.append("role", role.toUpperCase().replace(/\s+/g, "_"));
+      if (active !== undefined) params.append("active", String(active));
+      params.append("size", "100");
+
+      const url = `${API_BASE_URL}/admin/users?${params.toString()}`;
+      const response = await fetch(url, {
+        headers,
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorJson = await response.json().catch(() => ({}));
+        throw new Error(errorJson.message || `Failed to fetch users: HTTP ${response.status}`);
+      }
+
+      const json = await response.json();
+      const content = json.data?.content || json.data || [];
+      return content.map((u: any): ManagedUser => ({
+        id: u.id,
+        email: u.email,
+        name: u.name,
+        role: normalizeUserRole(u.role),
+        mobile: u.mobile,
+        active: Boolean(u.active),
+        createdAt: u.createdAt,
+        updatedAt: u.updatedAt,
+      }));
+    } catch (err: any) {
+      console.error("[apiService] getAdminUsers error:", err);
+      throw err;
+    }
+  },
+
+  /**
+   * Admin API: Create a new user (/api/v1/admin/users)
+   */
+  async createAdminUser(payload: {
+    email: string;
+    password: string;
+    role: string;
+    name?: string;
+    mobile?: string;
+    active?: boolean;
+  }): Promise<ManagedUser> {
+    const token = authService.getToken();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/admin/users`, {
+      method: "POST",
+      headers,
+      credentials: "include",
+      body: JSON.stringify({
+        email: payload.email.trim(),
+        password: payload.password,
+        role: payload.role.toUpperCase().replace(/\s+/g, "_"),
+        name: payload.name?.trim(),
+        mobile: payload.mobile?.trim(),
+        active: payload.active ?? true,
+      }),
+    });
+
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok || !json.success) {
+      throw new Error(json.message || `Failed to create user: HTTP ${response.status}`);
+    }
+
+    const u = json.data;
+    return {
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      role: normalizeUserRole(u.role),
+      mobile: u.mobile,
+      active: Boolean(u.active),
+      createdAt: u.createdAt,
+      updatedAt: u.updatedAt,
+    };
+  },
+
+  /**
+   * Admin API: Update an existing user (/api/v1/admin/users/{id})
+   */
+  async updateAdminUser(
+    id: number,
+    payload: {
+      role?: string;
+      active?: boolean;
+      name?: string;
+      mobile?: string;
+      password?: string;
+    }
+  ): Promise<ManagedUser> {
+    const token = authService.getToken();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const body: Record<string, any> = {};
+    if (payload.role) body.role = payload.role.toUpperCase().replace(/\s+/g, "_");
+    if (payload.active !== undefined) body.active = payload.active;
+    if (payload.name) body.name = payload.name.trim();
+    if (payload.mobile) body.mobile = payload.mobile.trim();
+    if (payload.password && payload.password.trim()) body.password = payload.password.trim();
+
+    const response = await fetch(`${API_BASE_URL}/admin/users/${id}`, {
+      method: "PUT",
+      headers,
+      credentials: "include",
+      body: JSON.stringify(body),
+    });
+
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok || !json.success) {
+      throw new Error(json.message || `Failed to update user: HTTP ${response.status}`);
+    }
+
+    const u = json.data;
+    return {
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      role: normalizeUserRole(u.role),
+      mobile: u.mobile,
+      active: Boolean(u.active),
+      createdAt: u.createdAt,
+      updatedAt: u.updatedAt,
+    };
+  },
+
+  /**
+   * Admin API: Deactivate a user (/api/v1/admin/users/{id})
+   */
+  async deactivateAdminUser(id: number): Promise<ManagedUser> {
+    const token = authService.getToken();
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/admin/users/${id}`, {
+      method: "DELETE",
+      headers,
+      credentials: "include",
+    });
+
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok || !json.success) {
+      throw new Error(json.message || `Failed to deactivate user: HTTP ${response.status}`);
+    }
+
+    const u = json.data;
+    return {
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      role: normalizeUserRole(u.role),
+      mobile: u.mobile,
+      active: Boolean(u.active),
+      createdAt: u.createdAt,
+      updatedAt: u.updatedAt,
+    };
+  },
+
+  /**
+   * Share visiting card details with a lead recipient via email.
+   * Calls POST /api/v1/documents/{cardIdentifier}/share
+   */
+  async shareVisitingCard(
+    cardIdentifier: string | number,
+    payload: { leadEmail: string; subject?: string }
+  ): Promise<{ success: boolean; message: string }> {
+    const token = authService.getToken();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/documents/${cardIdentifier}/share`, {
+      method: "POST",
+      headers,
+      credentials: "include",
+      body: JSON.stringify({
+        leadEmail: payload.leadEmail.trim(),
+        subject: payload.subject?.trim() || undefined,
+      }),
+    });
+
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok || !json.success) {
+      throw new Error(json.message || `Failed to share visiting card: HTTP ${response.status}`);
+    }
+
+    return {
+      success: true,
+      message: json.message || "Visiting card shared successfully with lead",
+    };
   },
 };

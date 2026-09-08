@@ -84,7 +84,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Protected endpoints: /documents/**, /auth/me, /auth/logout
+        // Protected admin endpoints: /admin/**
+        if (uri.contains("/admin")) {
+            if (request.getAttribute("currentUser") == null) {
+                sendUnauthorizedError(request, response, "Authentication required to access admin resources");
+                return;
+            }
+            String role = (String) request.getAttribute("currentUserRole");
+            if (!"ADMIN".equalsIgnoreCase(role)) {
+                sendForbiddenError(request, response, "Access denied. Administrator privileges required.");
+                return;
+            }
+        }
+
+        // Protected user endpoints: /documents/**, /auth/me, /auth/logout
         if (uri.contains("/documents") || uri.endsWith("/auth/me") || uri.endsWith("/auth/logout")) {
             if (request.getAttribute("currentUser") == null) {
                 sendUnauthorizedError(request, response, "Authentication required to access this resource");
@@ -124,6 +137,23 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         body.put("success", false);
         body.put("status", HttpStatus.UNAUTHORIZED.value());
         body.put("error", "Unauthorized");
+        body.put("message", message);
+        body.put("path", request.getRequestURI());
+        body.put("timestamp", LocalDateTime.now().toString());
+
+        response.getWriter().write(objectMapper.writeValueAsString(body));
+        response.getWriter().flush();
+    }
+
+    private void sendForbiddenError(HttpServletRequest request, HttpServletResponse response, String message) throws IOException {
+        response.setStatus(HttpStatus.FORBIDDEN.value());
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", false);
+        body.put("status", HttpStatus.FORBIDDEN.value());
+        body.put("error", "Forbidden");
         body.put("message", message);
         body.put("path", request.getRequestURI());
         body.put("timestamp", LocalDateTime.now().toString());

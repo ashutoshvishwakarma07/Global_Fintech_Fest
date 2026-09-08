@@ -54,18 +54,7 @@ public class AuthService {
             log.warn("Notice updating role constraint: {}", e.getMessage());
         }
 
-        // 1. Delete all other users and their data from database, keeping ONLY admin@demo.com, user1@demo.com, user2@demo.com
-        try {
-            int deletedCards = jdbcTemplate.update("DELETE FROM visiting_cards WHERE uploader_email NOT IN ('admin@demo.com', 'user1@demo.com', 'user2@demo.com')");
-            log.info("Cleaned up {} visiting cards belonging to other deleted users", deletedCards);
-
-            int deletedUsers = jdbcTemplate.update("DELETE FROM app_users WHERE email NOT IN ('admin@demo.com', 'user1@demo.com', 'user2@demo.com')");
-            log.info("Deleted {} other users from app_users table", deletedUsers);
-        } catch (Exception e) {
-            log.warn("Notice during cleanup of other user data: {}", e.getMessage());
-        }
-
-        // 2. Keep only two field users (user1, user2) and one admin (admin) with guaranteed BCrypt passwords
+        // Seed initial default users if they don't already exist
         seedOrMigrateUser("admin@demo.com", "Admin@123", "Admin User", "9900112233", UserRole.ADMIN);
         seedOrMigrateUser("user1@demo.com", "Demo@123", "Rahul Sharma", "9876543210", UserRole.FIELD_USER);
         seedOrMigrateUser("user2@demo.com", "Demo@123", "Priya Verma", "9812345678", UserRole.FIELD_USER);

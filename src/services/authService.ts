@@ -1,6 +1,6 @@
 import { User, UserRole } from "@/types";
+import { API_BASE_URL } from "@/config/apiConfig";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://18.60.179.46:8080/api/v1";
 const TOKEN_KEY = "gff_auth_token";
 
 export interface LoginResult {
@@ -15,6 +15,9 @@ export function normalizeUserRole(backendRole?: string): UserRole {
   const upper = backendRole.toUpperCase();
   if (upper === "ADMIN") return "Admin";
   if (upper === "SUPERVISOR") return "Supervisor";
+  if (upper === "OPERATIONS") return "Operations";
+  if (upper === "PARTNER") return "Partner";
+  if (upper === "LENDER") return "Lender";
   return "Field User";
 }
 

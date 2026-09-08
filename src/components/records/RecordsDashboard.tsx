@@ -5,6 +5,7 @@ import { User, UploadRecord, UserRole, RecordStatus, DocumentType } from "@/type
 import { RecordCard } from "./RecordCard";
 import { RecordTable } from "./RecordTable";
 import { RecordDetailModal } from "./RecordDetailModal";
+import { ShareLeadModal } from "./ShareLeadModal";
 import { EmptyState } from "../common/EmptyState";
 import {
   Search,
@@ -160,12 +161,14 @@ interface RecordsDashboardProps {
   currentUser: User;
   records: UploadRecord[];
   onNavigateToUpload: () => void;
+  onNotify?: (type: "success" | "error" | "info", title: string, message?: string) => void;
 }
 
 export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
   currentUser,
   records,
   onNavigateToUpload,
+  onNotify,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [uploaderFilter, setUploaderFilter] = useState<string>("All");
@@ -173,6 +176,7 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
   const [endDate, setEndDate] = useState<string>("");
   const [datePreset, setDatePreset] = useState<"all" | "today" | "yesterday" | "week">("all");
   const [selectedRecord, setSelectedRecord] = useState<UploadRecord | null>(null);
+  const [sharingRecord, setSharingRecord] = useState<UploadRecord | null>(null);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
   const isAdmin = currentUser.role === "Admin";
@@ -803,6 +807,7 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
                 key={record.id}
                 record={record}
                 onSelect={(r) => setSelectedRecord(r)}
+                onShare={(r) => setSharingRecord(r)}
               />
             ))}
           </div>
@@ -812,13 +817,30 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
             <RecordTable
               records={filteredRecords}
               onSelect={(r) => setSelectedRecord(r)}
+              onShare={(r) => setSharingRecord(r)}
             />
           </div>
         </>
       )}
 
       {/* Record Detail Modal */}
-      <RecordDetailModal record={selectedRecord} onClose={() => setSelectedRecord(null)} />
+      <RecordDetailModal
+        record={selectedRecord}
+        onClose={() => setSelectedRecord(null)}
+        onShare={(r) => setSharingRecord(r)}
+      />
+
+      {/* Share Visiting Card with Lead Modal */}
+      <ShareLeadModal
+        isOpen={Boolean(sharingRecord)}
+        record={sharingRecord}
+        onClose={() => setSharingRecord(null)}
+        onSuccess={(msg) => {
+          if (onNotify) {
+            onNotify("success", "Card Shared with Lead", msg);
+          }
+        }}
+      />
     </div>
   );
 };

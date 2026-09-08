@@ -103,6 +103,9 @@ public class VisitingCard {
     @Column(name = "ocr_processed_at")
     private LocalDateTime ocrProcessedAt;
 
+    @Column(name = "email_sent_at")
+    private LocalDateTime emailSentAt;
+
     // --- Timestamps ---
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -143,6 +146,7 @@ public class VisitingCard {
         private String extractedAddress;
         private String rawOcrText;
         private LocalDateTime ocrProcessedAt;
+        private LocalDateTime emailSentAt;
 
         public VisitingCardBuilder id(Long id) { this.id = id; return this; }
         public VisitingCardBuilder recordId(String recordId) { this.recordId = recordId; return this; }
@@ -169,6 +173,7 @@ public class VisitingCard {
         public VisitingCardBuilder extractedAddress(String extractedAddress) { this.extractedAddress = extractedAddress; return this; }
         public VisitingCardBuilder rawOcrText(String rawOcrText) { this.rawOcrText = rawOcrText; return this; }
         public VisitingCardBuilder ocrProcessedAt(LocalDateTime ocrProcessedAt) { this.ocrProcessedAt = ocrProcessedAt; return this; }
+        public VisitingCardBuilder emailSentAt(LocalDateTime emailSentAt) { this.emailSentAt = emailSentAt; return this; }
 
         public VisitingCard build() {
             VisitingCard card = new VisitingCard();
@@ -197,6 +202,7 @@ public class VisitingCard {
             card.extractedAddress = this.extractedAddress;
             card.rawOcrText = this.rawOcrText;
             card.ocrProcessedAt = this.ocrProcessedAt;
+            card.emailSentAt = this.emailSentAt;
             return card;
         }
     }
@@ -292,6 +298,9 @@ public class VisitingCard {
 
     public LocalDateTime getOcrProcessedAt() { return ocrProcessedAt; }
     public void setOcrProcessedAt(LocalDateTime ocrProcessedAt) { this.ocrProcessedAt = ocrProcessedAt; }
+
+    public LocalDateTime getEmailSentAt() { return emailSentAt; }
+    public void setEmailSentAt(LocalDateTime emailSentAt) { this.emailSentAt = emailSentAt; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

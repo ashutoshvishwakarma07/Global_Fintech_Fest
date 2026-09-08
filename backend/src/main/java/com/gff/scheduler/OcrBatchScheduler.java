@@ -9,7 +9,7 @@ import java.util.Map;
 
 /**
  * Scheduled job to run automated OCR extraction on pending visiting cards
- * and dispatch daily Excel report email to team leads every evening at 9:30 PM (21:30 IST).
+ * and dispatch daily Excel report email to team leads every morning at 7:00 AM IST.
  */
 @Component
 public class OcrBatchScheduler {
@@ -23,17 +23,21 @@ public class OcrBatchScheduler {
     }
 
     /**
-     * Cron expression: Second 0, Minute 42, Hour 21 (9:42 PM IST) every day.
-     * Workflow:
-     * 1. Completes any pending/processing OCR tasks dynamically (zero hardcoding).
-     * 2. Fetches today's uploaded documents.
-     * 3. Generates the Excel spreadsheet (.xlsx) with Apache POI.
-     * 4. Emails the Excel attachment to team leads via Spring Boot Mail.
+     * Cron expression: Second 0, Minute 0, Hour 7 (07:00 AM IST) every day.
+     * Uses Asia/Kolkata timezone so execution is strictly independent of EC2 server local time.
      */
-    @Scheduled(cron = "${ocr.scheduler.cron:0 10 12 * * ?}", zone = "${ocr.scheduler.zone:Asia/Kolkata}")
-    public void runEveningOcrBatch() {
-        log.info("⏰ === Starting 12:10 PM Visiting Card OCR Batch & Email Report Job ===");
+    @Scheduled(cron = "${ocr.scheduler.cron:0 0 7 * * *}", zone = "${ocr.scheduler.zone:Asia/Kolkata}")
+    public void runMorningOcrBatch() {
+        log.info("⏰ [07:00 AM IST] Triggering Daily Scheduled OCR & Export Batch Job...");
         Map<String, Object> result = dailyOcrReportScheduler.runDailyReportWorkflow();
-        log.info("=== Completed 12:10 PM Visiting Card OCR Batch & Email Report Job. Result: {} ===", result);
+        log.info("⏰ [07:00 AM IST] Daily Scheduled OCR Batch finished with result: {}", result);
+    }
+
+    /**
+     * Backward-compatible trigger method for controller manual endpoints.
+     */
+    public Map<String, Object> runEveningOcrBatch() {
+        log.info("⏰ Manual Trigger: Executing Visiting Card Daily OCR & Report Job...");
+        return dailyOcrReportScheduler.runDailyReportWorkflow();
     }
 }

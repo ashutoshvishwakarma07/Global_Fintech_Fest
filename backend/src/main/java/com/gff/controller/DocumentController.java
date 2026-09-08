@@ -1,6 +1,7 @@
 package com.gff.controller;
 
 import com.gff.dto.request.DocumentUploadRequest;
+import com.gff.dto.request.ShareCardRequest;
 import com.gff.dto.response.ApiResponse;
 import com.gff.dto.response.DashboardStatsResponse;
 import com.gff.dto.response.DocumentResponse;
@@ -148,6 +149,23 @@ public class DocumentController {
                 Map.of("status", "SUCCESS", "message", "Processed all pending visiting cards and generated daily report")
         ));
     }
+    @PostMapping({"/{id}/share", "/record/{recordId}/share"})
+    public ResponseEntity<ApiResponse<DocumentResponse>> shareVisitingCard(
+            @PathVariable(required = false) Long id,
+            @PathVariable(required = false) String recordId,
+            @Valid @RequestBody ShareCardRequest request,
+            HttpServletRequest httpRequest) {
+
+        User currentUser = (User) httpRequest.getAttribute("currentUser");
+        if (currentUser == null) {
+            throw new ApiException("Full authentication is required to share visiting cards", HttpStatus.UNAUTHORIZED);
+        }
+
+        String identifier = id != null ? id.toString() : recordId;
+        DocumentResponse record = documentService.shareVisitingCard(identifier, request, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("Visiting card details shared successfully with lead", record));
+    }
+
     /**
      * Stream visiting card image directly from S3.
      */

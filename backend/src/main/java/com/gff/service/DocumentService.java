@@ -1,8 +1,10 @@
 package com.gff.service;
 
 import com.gff.dto.request.DocumentUploadRequest;
+import com.gff.dto.request.ShareCardRequest;
 import com.gff.dto.response.DashboardStatsResponse;
 import com.gff.dto.response.DocumentResponse;
+import com.gff.entity.CardShareAudit;
 import com.gff.entity.User;
 import com.gff.entity.VisitingCard;
 import com.gff.entity.enums.OcrStatus;
@@ -10,6 +12,7 @@ import com.gff.entity.enums.RecordStatus;
 import com.gff.entity.enums.UserRole;
 import com.gff.exception.ApiException;
 import com.gff.exception.ResourceNotFoundException;
+import com.gff.repository.CardShareAuditRepository;
 import com.gff.repository.VisitingCardRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,11 +35,19 @@ public class DocumentService {
     private final VisitingCardRepository visitingCardRepository;
     private final S3Service s3Service;
     private final DynamicOcrService dynamicOcrService;
+    private final EmailService emailService;
+    private final CardShareAuditRepository cardShareAuditRepository;
 
-    public DocumentService(VisitingCardRepository visitingCardRepository, S3Service s3Service, DynamicOcrService dynamicOcrService) {
+    public DocumentService(VisitingCardRepository visitingCardRepository,
+                           S3Service s3Service,
+                           DynamicOcrService dynamicOcrService,
+                           EmailService emailService,
+                           CardShareAuditRepository cardShareAuditRepository) {
         this.visitingCardRepository = visitingCardRepository;
         this.s3Service = s3Service;
         this.dynamicOcrService = dynamicOcrService;
+        this.emailService = emailService;
+        this.cardShareAuditRepository = cardShareAuditRepository;
     }
 
     @Transactional
@@ -216,10 +227,74 @@ public class DocumentService {
                 .build();
     }
 
+    /**
+     * Shares a visiting card's details with a lead recipient via email.
+     * Enforces authentication, authorization (RBAC/ownership), existence check, and audit tracking.
+     */
+    @Transactional
+    public DocumentResponse shareVisitingCard(String cardIdentifier, ShareCardRequest request, User currentUser) {
+        if (currentUser == null) {
+            throw new ApiException("Authentication is required to share visiting cards", HttpStatus.UNAUTHORIZED);
+        }
+
+        VisitingCard card = null;
+        try {
+            Long numericId = Long.parseLong(cardIdentifier);
+            card = visitingCardRepository.findById(numericId).orElse(null);
+        } catch (NumberFormatException ignored) {}
+
+        if (card == null) {
+            card = visitingCardRepository.findByRecordId(cardIdentifier).orElse(null);
+        }
+
+        if (card == null) {
+            throw new ResourceNotFoundException("VisitingCard", "id or recordId", cardIdentifier);
+        }
+
+        // Validate user permission (Supervisors and Admins can share any card; Field Users can share their own)
+        validateOwnership(card, currentUser.getEmail(), currentUser.getRole().name());
+
+        if (request.getLeadEmail() == null || request.getLeadEmail().trim().isEmpty()) {
+            throw new ApiException("Lead email is required", HttpStatus.BAD_REQUEST);
+        }
+
+        String leadEmail = request.getLeadEmail().trim();
+        String subject = request.getSubject();
+
+        CardShareAudit audit = new CardShareAudit();
+        audit.setCardId(card.getId());
+        audit.setRecordId(card.getRecordId());
+        audit.setSenderEmail(currentUser.getEmail());
+        audit.setSenderName(currentUser.getName());
+        audit.setSenderRole(currentUser.getRole().name());
+        audit.setLeadEmail(leadEmail);
+        audit.setSubject(subject);
+        audit.setAction("VISITING_CARD_SHARED");
+
+        try {
+            String emailResult = emailService.sendVisitingCardToLead(
+                    card,
+                    leadEmail,
+                    subject,
+                    currentUser.getName()
+            );
+            log.info("Shared visiting card [{}] with lead {}: {}", card.getRecordId(), leadEmail, emailResult);
+            audit.setStatus("SUCCESS");
+            cardShareAuditRepository.save(audit);
+            return DocumentResponse.fromEntity(card);
+        } catch (Exception e) {
+            log.error("Failed to share visiting card [{}] with lead {}: {}", card.getRecordId(), leadEmail, e.getMessage());
+            audit.setStatus("FAILED");
+            audit.setErrorMessage(e.getMessage());
+            cardShareAuditRepository.save(audit);
+            throw new ApiException("Failed to send email to lead: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
     private void validateOwnership(VisitingCard card, String currentUserEmail, String currentUserRole) {
         boolean isPrivileged = "SUPERVISOR".equalsIgnoreCase(currentUserRole) || "ADMIN".equalsIgnoreCase(currentUserRole);
         if (!isPrivileged && (currentUserEmail == null || !currentUserEmail.equalsIgnoreCase(card.getUploaderEmail()))) {
-            throw new ApiException("Access Denied: You do not have permission to view this document.", HttpStatus.FORBIDDEN);
+            throw new ApiException("Access Denied: You do not have permission to view or share this document.", HttpStatus.FORBIDDEN);
         }
     }
 }

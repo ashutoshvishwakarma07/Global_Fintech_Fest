@@ -1,26 +1,28 @@
 "use client";
 
 import React from "react";
-import { Camera, FolderKanban, ShieldCheck } from "lucide-react";
+import { Camera, FolderKanban, ShieldCheck, Users } from "lucide-react";
 
 interface BottomNavProps {
-  activeTab: "upload" | "records";
-  onTabChange: (tab: "upload" | "records") => void;
+  activeTab: "upload" | "records" | "users";
+  onTabChange: (tab: "upload" | "records" | "users") => void;
   recordCount?: number;
+  isAdmin?: boolean;
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({
   activeTab,
   onTabChange,
   recordCount = 0,
+  isAdmin = false,
 }) => {
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200/90 safe-bottom">
-      <div className="grid grid-cols-2 max-w-md mx-auto px-4 py-1.5">
+      <div className={`grid ${isAdmin ? "grid-cols-3" : "grid-cols-2"} max-w-md mx-auto px-3 py-1.5`}>
         <button
           type="button"
           onClick={() => onTabChange("upload")}
-          className={`flex flex-col items-center justify-center py-2 px-3 rounded-xl transition-all touch-target-min ${
+          className={`flex flex-col items-center justify-center py-2 px-2 rounded-xl transition-all touch-target-min ${
             activeTab === "upload"
               ? "text-indigo-600 font-bold"
               : "text-slate-400 hover:text-slate-600 font-medium"
@@ -32,13 +34,13 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-indigo-600" />
             )}
           </div>
-          <span className="text-[11px] mt-1 tracking-tight">Capture & Upload</span>
+          <span className="text-[10px] mt-1 tracking-tight">Upload</span>
         </button>
 
         <button
           type="button"
           onClick={() => onTabChange("records")}
-          className={`flex flex-col items-center justify-center py-2 px-3 rounded-xl transition-all touch-target-min ${
+          className={`flex flex-col items-center justify-center py-2 px-2 rounded-xl transition-all touch-target-min ${
             activeTab === "records"
               ? "text-indigo-600 font-bold"
               : "text-slate-400 hover:text-slate-600 font-medium"
@@ -55,8 +57,28 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-indigo-600" />
             )}
           </div>
-          <span className="text-[11px] mt-1 tracking-tight">Records</span>
+          <span className="text-[10px] mt-1 tracking-tight">Records</span>
         </button>
+
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => onTabChange("users")}
+            className={`flex flex-col items-center justify-center py-2 px-2 rounded-xl transition-all touch-target-min ${
+              activeTab === "users"
+                ? "text-indigo-600 font-bold"
+                : "text-slate-400 hover:text-slate-600 font-medium"
+            }`}
+          >
+            <div className="relative">
+              <Users className={`w-5 h-5 ${activeTab === "users" ? "stroke-[2.5]" : ""}`} />
+              {activeTab === "users" && (
+                <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-indigo-600" />
+              )}
+            </div>
+            <span className="text-[10px] mt-1 tracking-tight">Users</span>
+          </button>
+        )}
       </div>
     </nav>
   );

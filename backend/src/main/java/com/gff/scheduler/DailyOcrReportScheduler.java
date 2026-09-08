@@ -2,29 +2,29 @@ package com.gff.scheduler;
 
 import com.gff.entity.VisitingCard;
 import com.gff.entity.enums.OcrStatus;
-import com.gff.entity.enums.RecordStatus;
 import com.gff.repository.VisitingCardRepository;
 import com.gff.service.DynamicOcrService;
 import com.gff.service.EmailService;
 import com.gff.service.ExcelReportService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Automated Cron Job Scheduler that executes the complete 4-step daily audit workflow:
- * 1. Resolves and completes any pending/processing OCR tasks.
- * 2. Queries today's complete document list.
- * 3. Generates an Excel spreadsheet (.xlsx) with Apache POI.
- * 4. Dispatches the report as an email attachment to team leads.
+ * Automated Cron Job Scheduler that executes the daily 7:00 AM IST audit workflow:
+ * 1. Finds pending visiting card records (ocr_status = PENDING).
+ * 2. Processes them through dynamic OCR.
+ * 3. Identifies only records newly completed during this execution (ocr_status = COMPLETED, email_sent_at IS NULL).
+ * 4. Generates an Excel sheet and emails it ONLY if newly completed records exist.
+ * 5. Marks successfully emailed records with email_sent_at = current timestamp to prevent duplicates.
  */
 @Component
 public class DailyOcrReportScheduler {
@@ -36,7 +36,7 @@ public class DailyOcrReportScheduler {
     private final ExcelReportService excelReportService;
     private final EmailService emailService;
 
-    // Concurrency lock to prevent concurrent executions across threads/instances
+    // Concurrency lock to prevent overlapping executions
     private final AtomicBoolean isJobRunning = new AtomicBoolean(false);
 
     public DailyOcrReportScheduler(VisitingCardRepository visitingCardRepository,
@@ -50,10 +50,9 @@ public class DailyOcrReportScheduler {
     }
 
     /**
-     * Executes the complete 4-step workflow synchronously.
-     * Invoked by OcrBatchScheduler at 9:30 PM or via Admin manual trigger endpoints.
+     * Executes the daily 7:00 AM IST OCR batch and conditional export workflow.
      *
-     * @return Map with execution summary, counts, and email dispatch status
+     * @return Map with execution metrics, counts, and email dispatch status
      */
     public Map<String, Object> runDailyReportWorkflow() {
         Map<String, Object> result = new LinkedHashMap<>();
@@ -67,101 +66,109 @@ public class DailyOcrReportScheduler {
         }
 
         try {
-            log.info("================================================================================");
-            log.info(" STEP 1: Process Pending & In-Flight OCR Tasks");
-            log.info("================================================================================");
-            int resolvedCount = processPendingOcrTasks();
+            log.info("Daily OCR job started - 07:00 AM IST");
 
-            log.info("================================================================================");
-            log.info(" STEP 2: Fetch Complete List of Documents Uploaded for Today");
-            log.info("================================================================================");
-            LocalDate today = LocalDate.now();
-            LocalDateTime startOfDay = today.atStartOfDay();
-            LocalDateTime endOfDay = LocalDateTime.now();
+            // 1. Query all pending visiting-card records
+            List<VisitingCard> pendingCards = visitingCardRepository.findByOcrStatusIn(
+                    List.of(OcrStatus.PENDING, OcrStatus.PROCESSING)
+            );
+            int pendingCount = pendingCards.size();
+            log.info("Pending records found: {}", pendingCount);
 
-            List<VisitingCard> todayCards = visitingCardRepository.findByCreatedAtBetween(startOfDay, endOfDay);
-            if (todayCards.isEmpty()) {
-                log.info("No documents uploaded strictly today ({}), fetching all available documents for audit report", today);
-                todayCards = visitingCardRepository.findAll();
+            int completedCount = 0;
+            int failedCount = 0;
+            List<VisitingCard> newlyCompletedCards = new ArrayList<>();
+
+            // 2. Process records through OCR
+            for (VisitingCard card : pendingCards) {
+                try {
+                    card.setOcrStatus(OcrStatus.PROCESSING);
+                    visitingCardRepository.save(card);
+
+                    boolean success = dynamicOcrService.processCardOcrDynamically(card);
+                    if (success && card.getOcrStatus() == OcrStatus.COMPLETED) {
+                        completedCount++;
+                        // Only include in export if not already emailed
+                        if (card.getEmailSentAt() == null) {
+                            newlyCompletedCards.add(card);
+                        }
+                    } else {
+                        failedCount++;
+                        card.setOcrStatus(OcrStatus.FAILED);
+                        visitingCardRepository.save(card);
+                    }
+                } catch (Exception e) {
+                    failedCount++;
+                    log.error("Failed to process OCR for card {}: {}", card.getRecordId(), e.getMessage());
+                    card.setOcrStatus(OcrStatus.FAILED);
+                    card.setErrorMessage(e.getMessage());
+                    visitingCardRepository.save(card);
+                }
             }
-            log.info("Found {} documents for today's daily audit report", todayCards.size());
 
-            // Calculate metrics
-            long total = todayCards.size();
-            long completed = todayCards.stream().filter(c -> c.getOcrStatus() == OcrStatus.COMPLETED).count();
-            long failed = todayCards.stream().filter(c -> c.getOcrStatus() == OcrStatus.FAILED).count();
-            double successRate = total > 0 ? ((double) completed / total) * 100.0 : 100.0;
+            log.info("OCR completed: {}", completedCount);
+            log.info("OCR failed: {}", failedCount);
+            log.info("Records ready for export: {}", newlyCompletedCards.size());
 
-            Map<String, Object> stats = new LinkedHashMap<>();
-            stats.put("total", total);
-            stats.put("completed", completed);
-            stats.put("failed", failed);
-            stats.put("successRate", successRate);
+            boolean emailSent = false;
+            int recordsMarkedAsEmailed = 0;
 
-            log.info("================================================================================");
-            log.info(" STEP 3: Generate Excel (.xlsx) Spreadsheet with Apache POI");
-            log.info("================================================================================");
-            byte[] excelBytes = excelReportService.generateDailyOcrReport(todayCards, today, stats);
-            log.info("Excel spreadsheet generated successfully (size: {} bytes)", excelBytes.length);
+            // 3. If there are newly completed records: Generate Excel and send email
+            if (!newlyCompletedCards.isEmpty()) {
+                LocalDate today = LocalDate.now();
+                Map<String, Object> stats = new LinkedHashMap<>();
+                stats.put("total", (long) newlyCompletedCards.size());
+                stats.put("completed", (long) completedCount);
+                stats.put("failed", (long) failedCount);
+                double successRate = (completedCount + failedCount) > 0
+                        ? ((double) completedCount / (completedCount + failedCount)) * 100.0
+                        : 100.0;
+                stats.put("successRate", successRate);
 
-            log.info("================================================================================");
-            log.info(" STEP 4: Email Spreadsheet Attachment to Team Leads via Spring Boot Mail");
-            log.info("================================================================================");
-            String emailStatus = emailService.sendDailyOcrReport(excelBytes, today, stats, todayCards);
-            log.info("Email dispatch status: {}", emailStatus);
+                byte[] excelBytes = excelReportService.generateDailyOcrReport(newlyCompletedCards, today, stats);
+                log.info("Excel spreadsheet generated for {} newly completed records (size: {} bytes)",
+                        newlyCompletedCards.size(), excelBytes.length);
+
+                String emailStatus = emailService.sendDailyOcrReport(excelBytes, today, stats, newlyCompletedCards);
+                log.info("Email dispatch status: {}", emailStatus);
+
+                // Mark records as emailed ONLY upon successful email delivery
+                if (emailStatus != null && emailStatus.startsWith("SUCCESS")) {
+                    emailSent = true;
+                    LocalDateTime sentTimestamp = LocalDateTime.now();
+                    for (VisitingCard card : newlyCompletedCards) {
+                        card.setEmailSentAt(sentTimestamp);
+                        visitingCardRepository.save(card);
+                        recordsMarkedAsEmailed++;
+                    }
+                } else {
+                    log.warn("Email delivery did not return SUCCESS. Records will not be marked as emailed to allow retry.");
+                }
+            } else {
+                // No pending records or no newly completed records: do not generate sheet or send email
+                log.info("No new data to export. Skipping sheet generation and email dispatch.");
+            }
+
+            log.info("Email sent: {}", emailSent ? "YES" : "NO");
+            log.info("Records marked as emailed: {}", recordsMarkedAsEmailed);
+            log.info("Daily OCR job completed");
 
             result.put("status", "SUCCESS");
-            result.put("reportDate", today.toString());
-            result.put("pendingTasksResolved", resolvedCount);
-            result.put("totalDocumentsInReport", total);
-            result.put("metrics", stats);
-            result.put("emailStatus", emailStatus);
+            result.put("pendingRecordsFound", pendingCount);
+            result.put("ocrCompleted", completedCount);
+            result.put("ocrFailed", failedCount);
+            result.put("recordsReadyForExport", newlyCompletedCards.size());
+            result.put("emailSent", emailSent ? "YES" : "NO");
+            result.put("recordsMarkedAsEmailed", recordsMarkedAsEmailed);
             return result;
 
         } catch (Exception e) {
-            log.error("Error executing Daily OCR Report Workflow: {}", e.getMessage(), e);
+            log.error("Error executing Daily OCR job: {}", e.getMessage(), e);
             result.put("status", "ERROR");
             result.put("errorMessage", e.getMessage());
             return result;
         } finally {
             isJobRunning.set(false);
-            log.info("Daily OCR Report Workflow completed. Concurrency lock released.");
         }
-    }
-
-    /**
-     * Resolves and extracts any cards remaining in PENDING or PROCESSING state dynamically.
-     */
-    private int processPendingOcrTasks() {
-        List<VisitingCard> pendingCards = visitingCardRepository.findByOcrStatusIn(
-                List.of(OcrStatus.PENDING, OcrStatus.PROCESSING)
-        );
-
-        log.info("Found {} pending/processing visiting cards in database", pendingCards.size());
-        int resolved = 0;
-
-        for (VisitingCard card : pendingCards) {
-            try {
-                log.info("Processing OCR for card: {} (uploader: {})", card.getRecordId(), card.getUploaderEmail());
-                card.setOcrStatus(OcrStatus.PROCESSING);
-                visitingCardRepository.save(card);
-
-                boolean success = dynamicOcrService.processCardOcrDynamically(card);
-                if (success) {
-                    resolved++;
-                    log.info("Successfully completed dynamic OCR for card: {} (Holder: {})",
-                            card.getRecordId(), card.getCardHolderName());
-                } else {
-                    log.warn("Dynamic OCR extraction failed or document unreadable for card: {}", card.getRecordId());
-                }
-
-            } catch (Exception e) {
-                log.error("Failed to process OCR for card {}: {}", card.getRecordId(), e.getMessage());
-                card.setOcrStatus(OcrStatus.FAILED);
-                card.setErrorMessage(e.getMessage());
-                visitingCardRepository.save(card);
-            }
-        }
-        return resolved;
     }
 }

@@ -2,15 +2,16 @@
 
 import React from "react";
 import { UploadRecord } from "@/types";
-import { ExternalLink, Shield, CheckCircle2, FileText } from "lucide-react";
+import { ExternalLink, Shield, CheckCircle2, FileText, Mail } from "lucide-react";
 import { getDisplayImageUrl } from "@/utils/imageUrl";
 
 interface RecordTableProps {
   records: UploadRecord[];
   onSelect: (record: UploadRecord) => void;
+  onShare?: (record: UploadRecord) => void;
 }
 
-export const RecordTable: React.FC<RecordTableProps> = ({ records, onSelect }) => {
+export const RecordTable: React.FC<RecordTableProps> = ({ records, onSelect, onShare }) => {
   const getStatusBadge = (status: UploadRecord["status"]) => {
     switch (status) {
       case "Verified":
@@ -143,17 +144,35 @@ export const RecordTable: React.FC<RecordTableProps> = ({ records, onSelect }) =
 
                   {/* Actions */}
                   <td className="py-3 px-4 text-right whitespace-nowrap">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelect(record);
-                      }}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg transition-colors"
-                    >
-                      <span>View</span>
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelect(record);
+                        }}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg transition-colors"
+                        title="View details"
+                      >
+                        <span>View</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </button>
+
+                      {onShare && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onShare(record);
+                          }}
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1.5 rounded-lg transition-colors"
+                          title="Share visiting card with lead via email"
+                        >
+                          <Mail className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Share with Lead</span>
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );

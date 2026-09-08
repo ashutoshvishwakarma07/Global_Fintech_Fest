@@ -6,5 +6,8 @@ package com.gff.entity.enums;
 public enum UserRole {
     ADMIN,
     SUPERVISOR,
-    FIELD_USER
+    FIELD_USER,
+    OPERATIONS,
+    PARTNER,
+    LENDER
 }

@@ -1,4 +1,4 @@
-export type UserRole = "Field User" | "Supervisor" | "Admin";
+export type UserRole = "Field User" | "Supervisor" | "Admin" | "Operations" | "Partner" | "Lender";
 
 export interface User {
   id: string;
@@ -7,6 +7,17 @@ export interface User {
   role: UserRole;
   avatar?: string;
   mobile?: string;
+}
+
+export interface ManagedUser {
+  id: number;
+  email: string;
+  name: string;
+  role: UserRole;
+  mobile?: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export type RecordStatus = "Uploaded" | "Verified" | "Processing" | "Failed";
@@ -70,6 +81,13 @@ export interface UploadRecord {
   backImageUrl?: string;
   fileSize?: string;
   s3Url?: string;
+  numericId?: number;
+  emailSentAt?: string;
+}
+
+export interface ShareCardPayload {
+  leadEmail: string;
+  subject?: string;
 }
 
 export interface QueuedUploadItem {

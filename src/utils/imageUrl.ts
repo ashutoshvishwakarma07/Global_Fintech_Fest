@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://18.60.179.46:8080/api/v1";
+import { API_BASE_URL } from "@/config/apiConfig";
 
 /**
  * Resolves the optimal, fast-loading image URL for visiting cards.

@@ -7,8 +7,8 @@ import { LogOut, ShieldCheck, Shield } from "lucide-react";
 interface AppHeaderProps {
   user: User;
   onLogout: () => void;
-  activeTab: "upload" | "records";
-  onTabChange: (tab: "upload" | "records") => void;
+  activeTab: "upload" | "records" | "users";
+  onTabChange: (tab: "upload" | "records" | "users") => void;
   recordsCount?: number;
 }
 
@@ -25,6 +25,12 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         return "bg-purple-100 text-purple-800 border-purple-200";
       case "Supervisor":
         return "bg-amber-100 text-amber-800 border-amber-200";
+      case "Operations":
+        return "bg-cyan-100 text-cyan-800 border-cyan-200";
+      case "Partner":
+        return "bg-indigo-100 text-indigo-800 border-indigo-200";
+      case "Lender":
+        return "bg-emerald-100 text-emerald-800 border-emerald-200";
       case "Field User":
       default:
         return "bg-blue-100 text-blue-800 border-blue-200";
@@ -81,6 +87,19 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               </span>
             )}
           </button>
+          {user.role === "Admin" && (
+            <button
+              type="button"
+              onClick={() => onTabChange("users")}
+              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                activeTab === "users"
+                  ? "bg-white text-indigo-700 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <span>User Management</span>
+            </button>
+          )}
         </nav>
 
         {/* Right: User Profile & Logout */}

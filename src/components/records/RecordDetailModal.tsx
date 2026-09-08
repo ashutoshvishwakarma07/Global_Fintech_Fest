@@ -26,9 +26,10 @@ import { getDisplayImageUrl } from "@/utils/imageUrl";
 interface RecordDetailModalProps {
   record: UploadRecord | null;
   onClose: () => void;
+  onShare?: (record: UploadRecord) => void;
 }
 
-export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({ record, onClose }) => {
+export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({ record, onClose, onShare }) => {
   const [copiedId, setCopiedId] = useState(false);
   const [copiedDocNum, setCopiedDocNum] = useState(false);
   const [activeImageView, setActiveImageView] = useState<"combined" | "front" | "back">("combined");
@@ -400,7 +401,7 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({ record, on
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2 shrink-0">
+        <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3 shrink-0">
           <button
             type="button"
             onClick={onClose}
@@ -408,6 +409,16 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({ record, on
           >
             Close / Back
           </button>
+          {onShare && (
+            <button
+              type="button"
+              onClick={() => onShare(record)}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold shadow-md shadow-emerald-200 active:scale-[0.98] transition-all"
+            >
+              <Mail className="w-4 h-4" />
+              <span>Share with Lead</span>
+            </button>
+          )}
         </div>
       </div>
     </div>

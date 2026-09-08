@@ -308,4 +308,166 @@ public class EmailService {
             log.warn("Could not save local disk backup of report: {}", e.getMessage());
         }
     }
+
+    /**
+     * Sends an individual visiting card's details to a lead recipient via email.
+     */
+    public String sendVisitingCardToLead(VisitingCard card, String leadEmail, String subject, String senderName) {
+        if (leadEmail == null || leadEmail.trim().isEmpty()) {
+            throw new IllegalArgumentException("Recipient lead email is required");
+        }
+        String recipient = leadEmail.trim();
+        String cardName = card.getCardHolderName() != null && !card.getCardHolderName().trim().isEmpty()
+                ? card.getCardHolderName().trim()
+                : (card.getCompanyName() != null ? card.getCompanyName().trim() : card.getRecordId());
+
+        String emailSubject = (subject != null && !subject.trim().isEmpty())
+                ? subject.trim()
+                : "Visiting Card Details - " + cardName;
+
+        String senderDisplayName = (senderName != null && !senderName.trim().isEmpty()) ? senderName.trim() : "Global Fintech Fest Team";
+
+        MimeMessage message = null;
+        if (mailSender != null) {
+            try {
+                message = mailSender.createMimeMessage();
+            } catch (Exception ignored) {}
+        }
+        if (message == null) {
+            message = new MimeMessage(jakarta.mail.Session.getInstance(new java.util.Properties()));
+        }
+
+        try {
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(fromEmail);
+            helper.setTo(recipient);
+            helper.setSubject(emailSubject);
+
+            String htmlBody = buildCardShareHtmlBody(card, senderDisplayName);
+            helper.setText(htmlBody, true);
+
+            log.info("Dispatching Visiting Card [{}] email to lead: {}", card.getRecordId(), recipient);
+            if (mailSender != null) {
+                mailSender.send(message);
+            } else {
+                sendDirectSmtp(message, new String[]{recipient}, "visiting_card_" + card.getRecordId());
+            }
+            log.info("Visiting Card [{}] successfully shared with lead {}", card.getRecordId(), recipient);
+            return "SUCCESS: Shared with " + recipient;
+        } catch (Exception e) {
+            log.warn("JavaMailSender encountered issue: {}. Activating resilient direct SMTP channel...", e.getMessage());
+            return sendDirectSmtp(message, new String[]{recipient}, "visiting_card_" + card.getRecordId());
+        }
+    }
+
+    private String buildCardShareHtmlBody(VisitingCard card, String senderDisplayName) {
+        String name = card.getCardHolderName() != null && !card.getCardHolderName().trim().isEmpty()
+                ? card.getCardHolderName() : "N/A";
+        String company = card.getCompanyName() != null && !card.getCompanyName().trim().isEmpty()
+                ? card.getCompanyName() : "N/A";
+        String designation = card.getDesignation() != null && !card.getDesignation().trim().isEmpty()
+                ? card.getDesignation() : "N/A";
+        String mobile = card.getExtractedMobile() != null && !card.getExtractedMobile().trim().isEmpty()
+                ? card.getExtractedMobile() : "N/A";
+        String email = card.getExtractedEmail() != null && !card.getExtractedEmail().trim().isEmpty()
+                ? card.getExtractedEmail() : "N/A";
+        String address = card.getExtractedAddress() != null && !card.getExtractedAddress().trim().isEmpty()
+                ? card.getExtractedAddress() : "N/A";
+        String notes = card.getNotes() != null && !card.getNotes().trim().isEmpty()
+                ? card.getNotes() : null;
+        String imageUrl = card.getImageUrl() != null && !card.getImageUrl().trim().isEmpty()
+                ? card.getImageUrl() : null;
+
+        StringBuilder html = new StringBuilder();
+        html.append("""
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <style>
+                body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 24px; color: #1e293b; }
+                .container { max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+                .header { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: #ffffff; padding: 24px 28px; }
+                .header h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+                .header p { margin: 6px 0 0 0; font-size: 13px; opacity: 0.85; }
+                .content { padding: 28px; }
+                .card-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+                .card-title { font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 2px; }
+                .card-subtitle { font-size: 13px; color: #2563eb; font-weight: 600; margin-bottom: 16px; }
+                .detail-row { display: flex; padding: 7px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+                .detail-label { width: 120px; color: #64748b; font-weight: 600; }
+                .detail-value { flex: 1; color: #1e293b; font-weight: 500; }
+                .image-box { text-align: center; margin: 20px 0 10px 0; }
+                .image-box img { max-width: 100%; max-height: 240px; border-radius: 8px; border: 1px solid #cbd5e1; object-fit: contain; }
+                .footer { text-align: center; padding: 18px 24px; font-size: 12px; color: #64748b; background: #f8fafc; border-top: 1px solid #e2e8f0; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="header">
+                  <h1>Visiting Card Shared With You</h1>
+                  <p>Global Fintech Fest — Official Contact Details</p>
+                </div>
+                <div class="content">
+                  <p style="margin-top: 0; font-size: 14px; line-height: 1.5;">Hello,</p>
+                  <p style="font-size: 14px; line-height: 1.5; color: #334155;">
+                    Please find the verified contact and business details for the visiting card below:
+                  </p>
+                  <div class="card-box">
+                    <div class="card-title">""").append(name).append("""
+                    </div>
+                    <div class="card-subtitle">""").append(designation).append(" • ").append(company).append("""
+                    </div>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                      <tr><td style="padding: 6px 0; color: #64748b; font-weight: 600; width: 110px;">Company:</td><td style="padding: 6px 0; color: #0f172a; font-weight: 500;">""").append(company).append("""
+                      </td></tr>
+                      <tr><td style="padding: 6px 0; color: #64748b; font-weight: 600;">Designation:</td><td style="padding: 6px 0; color: #0f172a; font-weight: 500;">""").append(designation).append("""
+                      </td></tr>
+                      <tr><td style="padding: 6px 0; color: #64748b; font-weight: 600;">Phone:</td><td style="padding: 6px 0; color: #0f172a; font-weight: 500; font-family: monospace;">""").append(mobile).append("""
+                      </td></tr>
+                      <tr><td style="padding: 6px 0; color: #64748b; font-weight: 600;">Email:</td><td style="padding: 6px 0; color: #2563eb; font-weight: 500;">""").append(email).append("""
+                      </td></tr>
+                      <tr><td style="padding: 6px 0; color: #64748b; font-weight: 600;">Address:</td><td style="padding: 6px 0; color: #0f172a; font-weight: 500;">""").append(address).append("""
+                      </td></tr>
+                    </table>
+                  </div>
+            """);
+
+        if (notes != null) {
+            html.append("""
+                  <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #92400e;">
+                    <strong>Notes:</strong> """).append(notes).append("""
+                  </div>
+            """);
+        }
+
+        if (imageUrl != null && imageUrl.startsWith("http")) {
+            html.append("""
+                  <div class="image-box">
+                    <p style="font-size: 12px; color: #64748b; margin-bottom: 8px; font-weight: 600;">Card Image Preview:</p>
+                    <img src=\"""").append(imageUrl).append("""
+                    \" alt="Visiting Card" />
+                  </div>
+            """);
+        }
+
+        html.append("""
+                  <p style="font-size: 13px; color: #64748b; margin-bottom: 0;">
+                    Regards,<br/>
+                    <strong>""").append(senderDisplayName).append("""
+                    </strong>
+                  </p>
+                </div>
+                <div class="footer">
+                  This email was dispatched on behalf of <strong>""").append(senderDisplayName).append("""
+                  </strong> via the Global Fintech Fest FieldCapture Portal.<br/>
+                  Confidential &copy; 2026 Global Fintech Fest. All rights reserved.
+                </div>
+              </div>
+            </body>
+            </html>
+            """);
+
+        return html.toString();
+    }
 }

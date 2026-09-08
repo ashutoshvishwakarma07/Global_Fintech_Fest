@@ -43,6 +43,9 @@ public class User {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
     public User() {
     }
 
@@ -59,6 +62,8 @@ public class User {
         private UserRole role;
         private String avatarUrl;
         private Boolean active = true;
+        private LocalDateTime createdAt;
+        private LocalDateTime updatedAt;
 
         public UserBuilder id(Long id) { this.id = id; return this; }
         public UserBuilder email(String email) { this.email = email; return this; }
@@ -68,6 +73,8 @@ public class User {
         public UserBuilder role(UserRole role) { this.role = role; return this; }
         public UserBuilder avatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; return this; }
         public UserBuilder active(Boolean active) { this.active = active; return this; }
+        public UserBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
+        public UserBuilder updatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; return this; }
 
         public User build() {
             User u = new User();
@@ -79,6 +86,8 @@ public class User {
             u.role = this.role;
             u.avatarUrl = this.avatarUrl;
             u.active = this.active;
+            u.createdAt = this.createdAt;
+            u.updatedAt = this.updatedAt;
             return u;
         }
     }
@@ -86,9 +95,15 @@ public class User {
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
         if (this.active == null) {
             this.active = true;
         }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 
     public Long getId() { return id; }
@@ -113,8 +128,12 @@ public class User {
     public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
 
     public Boolean getActive() { return active; }
+    public boolean isActive() { return Boolean.TRUE.equals(active); }
     public void setActive(Boolean active) { this.active = active; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

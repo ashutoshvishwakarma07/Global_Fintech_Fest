@@ -14,13 +14,14 @@ import { RecordsDashboard } from "@/components/records/RecordsDashboard";
 import { CameraCaptureModal } from "@/components/camera/CameraCaptureModal";
 import { ToastContainer, ToastMessage } from "@/components/common/Toast";
 import { CollageResult } from "@/services/collageService";
+import { UserManagementDashboard } from "@/components/admin/UserManagementDashboard";
 
 export default function Home() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
 
   // Navigation & Flow State
-  const [activeTab, setActiveTab] = useState<"upload" | "records">("upload");
+  const [activeTab, setActiveTab] = useState<"upload" | "records" | "users">("upload");
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [captureMode, setCaptureMode] = useState<CaptureMode>("single");
   const [twoSideData, setTwoSideData] = useState<{
@@ -240,6 +241,10 @@ export default function Home() {
         onLogout={handleLogout}
         activeTab={activeTab}
         onTabChange={(tab) => {
+          if (tab === "users" && currentUser.role !== "Admin") {
+            setActiveTab("upload");
+            return;
+          }
           setActiveTab(tab);
           setCapturedImage(null);
           setTwoSideData(null);
@@ -249,52 +254,54 @@ export default function Home() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 pt-5 pb-16">
-        {activeTab === "upload" ? (
-          capturedImage ? (
-            /* Upload Review & User Metadata Form */
-            <UploadForm
-              user={currentUser}
-              imagePreviewUrl={capturedImage}
-              captureMode={captureMode}
-              frontImageUrl={twoSideData?.frontUrl}
-              backImageUrl={twoSideData?.backUrl}
-              onCancel={() => {
-                setCapturedImage(null);
-                setTwoSideData(null);
-              }}
-              onRetake={() => {
-                setCapturedImage(null);
-                if (captureMode === "single") {
-                  setIsCameraOpen(true);
-                }
-              }}
-              onUploadSuccess={handleUploadComplete}
-            />
-          ) : (
-            /* Main Capture / Upload Action Screen */
-            <div className="max-w-xl mx-auto space-y-6 pt-2 pb-24 md:pb-12 animate-in fade-in">
-              {/* Action Cards supporting Single Side and Two-Sided Capture */}
-              <UploadActionCards
-                onOpenCamera={handleOpenCamera}
-                onSelectImage={handleSelectImageFile}
-                onDirectCameraInput={handleSelectImageFile}
-                onTwoSideCollageReady={handleTwoSideCollageReady}
-                capturedCameraImage={twoSideCameraImage}
-                onCameraImageConsumed={() => setTwoSideCameraImage(null)}
-              />
-            </div>
-          )
-        ) : (
+        {activeTab === "users" && currentUser.role === "Admin" ? (
+          /* Admin User Management Dashboard */
+          <UserManagementDashboard onNotify={addToast} />
+        ) : activeTab === "records" ? (
           /* Records Dashboard View */
           <RecordsDashboard
             currentUser={currentUser}
             records={records}
+            onNotify={addToast}
             onNavigateToUpload={() => {
               setActiveTab("upload");
               setCapturedImage(null);
               setTwoSideData(null);
             }}
           />
+        ) : capturedImage ? (
+          /* Upload Review & User Metadata Form */
+          <UploadForm
+            user={currentUser}
+            imagePreviewUrl={capturedImage}
+            captureMode={captureMode}
+            frontImageUrl={twoSideData?.frontUrl}
+            backImageUrl={twoSideData?.backUrl}
+            onCancel={() => {
+              setCapturedImage(null);
+              setTwoSideData(null);
+            }}
+            onRetake={() => {
+              setCapturedImage(null);
+              if (captureMode === "single") {
+                setIsCameraOpen(true);
+              }
+            }}
+            onUploadSuccess={handleUploadComplete}
+          />
+        ) : (
+          /* Main Capture / Upload Action Screen */
+          <div className="max-w-xl mx-auto space-y-6 pt-2 pb-24 md:pb-12 animate-in fade-in">
+            {/* Action Cards supporting Single Side and Two-Sided Capture */}
+            <UploadActionCards
+              onOpenCamera={handleOpenCamera}
+              onSelectImage={handleSelectImageFile}
+              onDirectCameraInput={handleSelectImageFile}
+              onTwoSideCollageReady={handleTwoSideCollageReady}
+              capturedCameraImage={twoSideCameraImage}
+              onCameraImageConsumed={() => setTwoSideCameraImage(null)}
+            />
+          </div>
         )}
       </main>
 
@@ -322,11 +329,16 @@ export default function Home() {
       <BottomNav
         activeTab={activeTab}
         onTabChange={(tab) => {
+          if (tab === "users" && currentUser.role !== "Admin") {
+            setActiveTab("upload");
+            return;
+          }
           setActiveTab(tab);
           setCapturedImage(null);
           setTwoSideData(null);
         }}
         recordCount={records.length}
+        isAdmin={currentUser.role === "Admin"}
       />
     </div>
   );

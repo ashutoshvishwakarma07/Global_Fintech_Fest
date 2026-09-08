@@ -45,6 +45,10 @@ public interface VisitingCardRepository extends JpaRepository<VisitingCard, Long
 
     List<VisitingCard> findByOcrStatusIn(List<OcrStatus> statuses);
 
+    List<VisitingCard> findByOcrStatusAndEmailSentAtIsNull(OcrStatus ocrStatus);
+
+    List<VisitingCard> findByOcrStatusInAndEmailSentAtIsNull(List<OcrStatus> statuses);
+
     /**
      * Query all visiting cards created between given timestamps (e.g. today's uploads).
      */
