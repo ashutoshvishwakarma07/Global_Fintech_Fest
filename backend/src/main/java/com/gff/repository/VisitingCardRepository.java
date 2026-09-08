@@ -62,8 +62,11 @@ public interface VisitingCardRepository extends JpaRepository<VisitingCard, Long
            "LOWER(v.recordId) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
            "LOWER(v.uploaderName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
            "LOWER(v.uploaderEmail) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           "LOWER(COALESCE(v.cardHolderName, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           "LOWER(COALESCE(v.companyName, '')) LIKE LOWER(CONCAT('%', :query, '%')))")
+           "LOWER(v.cardHolderName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(v.companyName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(v.designation) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(v.department) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(v.city) LIKE LOWER(CONCAT('%', :query, '%')))")
     Page<VisitingCard> searchRecords(@Param("query") String query, Pageable pageable);
 
     /**
@@ -73,7 +76,10 @@ public interface VisitingCardRepository extends JpaRepository<VisitingCard, Long
            "v.uploaderEmail = :uploaderEmail AND " +
            "(:query IS NULL OR :query = '' OR " +
            "LOWER(v.recordId) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           "LOWER(COALESCE(v.cardHolderName, '')) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           "LOWER(COALESCE(v.companyName, '')) LIKE LOWER(CONCAT('%', :query, '%')))")
+           "LOWER(v.cardHolderName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(v.companyName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(v.designation) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(v.department) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(v.city) LIKE LOWER(CONCAT('%', :query, '%')))")
     Page<VisitingCard> searchUserRecords(@Param("uploaderEmail") String uploaderEmail, @Param("query") String query, Pageable pageable);
 }

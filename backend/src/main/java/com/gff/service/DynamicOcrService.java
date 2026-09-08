@@ -22,6 +22,7 @@ import software.amazon.awssdk.services.textract.model.S3Object;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -29,8 +30,7 @@ import java.util.regex.Pattern;
 /**
  * Dynamic OCR Service for Visiting Cards:
  * Performs real-time dynamic text extraction using AWS Textract or IRIS.
- * Parses names, designations, company names, emails, and phone numbers dynamically.
- * Zero hardcoded names or mock values.
+ * Parses all 14 standardized fields dynamically with zero hardcoded mock values.
  */
 @Service
 public class DynamicOcrService {
@@ -38,9 +38,36 @@ public class DynamicOcrService {
     private static final Logger log = LoggerFactory.getLogger(DynamicOcrService.class);
 
     private static final Pattern EMAIL_PATTERN = Pattern.compile("\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\\b");
-    private static final Pattern PHONE_PATTERN = Pattern.compile("(?:\\+?\\d{1,3}[-\\s.]?)?\\(?\\d{3,5}\\)?[-\\s.]?\\d{3,5}[-\\s.]?\\d{3,5}");
-    private static final Pattern DESIGNATION_PATTERN = Pattern.compile("(?i)\\b(software engineer|senior engineer|lead engineer|developer|architect|director|manager|vice president|vp|ceo|cto|cfo|founder|co-founder|consultant|analyst|specialist|officer|head|executive)\\b");
-    private static final Pattern COMPANY_PATTERN = Pattern.compile("(?i)\\b(technologies|solutions|services|systems|infotech|pvt|ltd|limited|inc|corp|corporation|group|bank|fintech|labs|qualtech)\\b");
+    private static final Pattern PHONE_PATTERN = Pattern.compile("(?:\\+?\\d{1,3}[-\\s.]?)?\\(?\\d{2,5}\\)?[-\\s.]?\\d{3,5}[-\\s.]?\\d{3,5}");
+    private static final Pattern WEB_PATTERN = Pattern.compile("(?i)\\b(?:https?://|www\\.)[^\\s/$.?#].[^\\s]*\\b");
+    private static final Pattern PIN_PATTERN = Pattern.compile("(?i)\\b(?:PIN|PINCODE|ZIP|POSTAL)?\\s*(\\d{6}|\\d{5})\\b");
+    private static final Pattern LINKEDIN_PATTERN = Pattern.compile("(?i)(?:https?://)?(?:www\\.)?linkedin\\.com/(?:in/)?([a-zA-Z0-9_-]+)");
+    private static final Pattern TWITTER_PATTERN = Pattern.compile("(?i)(?:https?://)?(?:www\\.)?(?:twitter\\.com|x\\.com)/([a-zA-Z0-9_]+)");
+
+    private static final Pattern DESIGNATION_PATTERN = Pattern.compile("(?i)\\b(software engineer|senior engineer|lead engineer|developer|architect|director|manager|vice president|vp|ceo|cto|cfo|coo|founder|co-founder|consultant|analyst|specialist|officer|head|president|executive|managing director|general manager|associate|partner|principal)\\b");
+    private static final Pattern COMPANY_PATTERN = Pattern.compile("(?i)\\b(technologies|solutions|services|systems|infotech|pvt|ltd|limited|inc|corp|corporation|group|bank|fintech|labs|qualtech|capital|enterprises|consulting|software)\\b");
+    private static final Pattern DEPARTMENT_PATTERN = Pattern.compile("(?i)\\b(human resources|hr|sales|marketing|engineering|operations|finance|information technology|it|legal|research & development|r&d|customer support|support|accounts|procurement|product|administration|admin|business development|quality assurance|qa)\\b");
+
+    private static final List<String> INDIAN_STATES = Arrays.asList(
+            "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
+            "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka",
+            "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram",
+            "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
+            "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
+            "Delhi", "NCT of Delhi", "Chandigarh", "Puducherry"
+    );
+
+    private static final List<String> MAJOR_CITIES = Arrays.asList(
+            "Mumbai", "Delhi", "Bengaluru", "Bangalore", "Hyderabad", "Ahmedabad", "Chennai",
+            "Kolkata", "Surat", "Pune", "Jaipur", "Lucknow", "Kanpur", "Nagpur", "Indore",
+            "Thane", "Bhopal", "Visakhapatnam", "Pimpri-Chinchwad", "Patna", "Vadodara",
+            "Ghaziabad", "Ludhiana", "Agra", "Nashik", "Faridabad", "Meerut", "Rajkot",
+            "Kalyan-Dombivli", "Vasai-Virar", "Varanasi", "Srinagar", "Aurangabad", "Dhanbad",
+            "Amritsar", "Navi Mumbai", "Allahabad", "Prayagraj", "Ranchi", "Howrah", "Coimbatore",
+            "Jabalpur", "Gwalior", "Vijayawada", "Jodhpur", "Madurai", "Raipur", "Kota", "Guwahati",
+            "Chandigarh", "Solapur", "Hubballi-Dharwad", "Bareilly", "Moradabad", "Mysore", "Gurgaon",
+            "Gurugram", "Noida", "Greater Noida", "New York", "London", "Dubai", "Singapore", "San Francisco"
+    );
 
     @Value("${aws.s3.access-key:}")
     private String accessKey;
@@ -127,7 +154,7 @@ public class DynamicOcrService {
             }
         }
 
-        // 5. If no dynamic data could be extracted, mark as FAILED (NEVER inject fake/hardcoded data)
+        // 5. If no dynamic data could be extracted, mark as FAILED
         log.warn("No readable text could be extracted dynamically for card {}. Setting OCR status to FAILED.",
                 card.getRecordId());
         card.setOcrStatus(OcrStatus.FAILED);
@@ -220,33 +247,124 @@ public class DynamicOcrService {
         for (String rawLine : lines) {
             String line = rawLine.trim();
             if (line.isEmpty()) continue;
+            String lower = line.toLowerCase();
 
-            // Extract Email
+            // 1. LinkedIn
+            if (card.getLinkedIn() == null && (lower.contains("linkedin.com") || lower.startsWith("linkedin:"))) {
+                Matcher liMatch = LINKEDIN_PATTERN.matcher(line);
+                if (liMatch.find()) {
+                    card.setLinkedIn(liMatch.group());
+                } else {
+                    card.setLinkedIn(line.replaceFirst("(?i)^linkedin[:\\s-]*", "").trim());
+                }
+                continue;
+            }
+
+            // 2. Twitter / X
+            if (card.getTwitter() == null && (lower.contains("twitter.com") || lower.contains("x.com") || lower.startsWith("twitter:") || lower.startsWith("x:"))) {
+                Matcher twMatch = TWITTER_PATTERN.matcher(line);
+                if (twMatch.find()) {
+                    card.setTwitter(twMatch.group());
+                } else {
+                    card.setTwitter(line.replaceFirst("(?i)^(?:twitter|x)[:\\s-]*", "").trim());
+                }
+                continue;
+            }
+
+            // 3. Email Address
             Matcher emailMatcher = EMAIL_PATTERN.matcher(line);
             if (emailMatcher.find() && card.getExtractedEmail() == null) {
                 card.setExtractedEmail(emailMatcher.group());
                 continue;
             }
 
-            // Extract Phone / Mobile
-            Matcher phoneMatcher = PHONE_PATTERN.matcher(line);
-            if (phoneMatcher.find() && card.getExtractedMobile() == null && line.replaceAll("[^0-9]", "").length() >= 10) {
-                card.setExtractedMobile(phoneMatcher.group());
-                continue;
+            // 4. Website URL
+            if (card.getWebsiteUrl() == null && !lower.contains("linkedin") && !lower.contains("twitter")) {
+                Matcher webMatcher = WEB_PATTERN.matcher(line);
+                if (webMatcher.find()) {
+                    card.setWebsiteUrl(webMatcher.group().replaceAll("[^\\w./-]", ""));
+                    continue;
+                }
             }
 
-            // Extract Designation
+            // 5. Work Number vs Mobile Number
+            if (lower.contains("work") || lower.contains("tel") || lower.contains("office") || lower.contains("off:") || lower.contains("landline")) {
+                Matcher phoneMatcher = PHONE_PATTERN.matcher(line);
+                if (phoneMatcher.find() && card.getWorkNumber() == null) {
+                    card.setWorkNumber(phoneMatcher.group().trim());
+                    continue;
+                }
+            }
+
+            Matcher phoneMatcher = PHONE_PATTERN.matcher(line);
+            if (phoneMatcher.find()) {
+                String matchedPhone = phoneMatcher.group().trim();
+                if (card.getExtractedMobile() == null && line.replaceAll("[^0-9]", "").length() >= 10) {
+                    card.setExtractedMobile(matchedPhone);
+                    continue;
+                } else if (card.getWorkNumber() == null && !matchedPhone.equals(card.getExtractedMobile())) {
+                    card.setWorkNumber(matchedPhone);
+                    continue;
+                }
+            }
+
+            // 6. Department
+            if (card.getDepartment() == null) {
+                Matcher deptMatcher = DEPARTMENT_PATTERN.matcher(line);
+                if (deptMatcher.find()) {
+                    card.setDepartment(deptMatcher.group());
+                    continue;
+                }
+            }
+
+            // 7. Designation / Job Title
             Matcher desigMatcher = DESIGNATION_PATTERN.matcher(line);
             if (desigMatcher.find() && card.getDesignation() == null) {
-                card.setDesignation(line);
+                card.setDesignation(line.replaceFirst("(?i)^(?:designation|title|role)[:\\s-]*", "").trim());
                 continue;
             }
 
-            // Extract Company Name
+            // 8. Company Name
             Matcher compMatcher = COMPANY_PATTERN.matcher(line);
             if (compMatcher.find() && card.getCompanyName() == null) {
-                card.setCompanyName(line);
+                card.setCompanyName(line.replaceFirst("(?i)^(?:company|org|organization)[:\\s-]*", "").trim());
                 continue;
+            }
+
+            // 9. Postal / ZIP Code
+            if (card.getPostalZipCode() == null) {
+                Matcher pinMatcher = PIN_PATTERN.matcher(line);
+                if (pinMatcher.find()) {
+                    card.setPostalZipCode(pinMatcher.group(1));
+                }
+            }
+
+            // 10. City
+            if (card.getCity() == null) {
+                for (String c : MAJOR_CITIES) {
+                    if (Pattern.compile("(?i)\\b" + Pattern.quote(c) + "\\b").matcher(line).find()) {
+                        card.setCity(c);
+                        break;
+                    }
+                }
+            }
+
+            // 11. State
+            if (card.getState() == null) {
+                for (String s : INDIAN_STATES) {
+                    if (Pattern.compile("(?i)\\b" + Pattern.quote(s) + "\\b").matcher(line).find()) {
+                        card.setState(s);
+                        break;
+                    }
+                }
+            }
+
+            // 12. Country
+            if (card.getCountry() == null) {
+                Matcher countryMatcher = Pattern.compile("(?i)\\b(India|USA|United States|UK|United Kingdom|UAE|Singapore|Australia|Germany|Canada)\\b").matcher(line);
+                if (countryMatcher.find()) {
+                    card.setCountry(countryMatcher.group());
+                }
             }
 
             // Potential Person Name
@@ -258,6 +376,11 @@ public class DynamicOcrService {
         // Dynamically assign card holder name from the topmost valid name line
         if (card.getCardHolderName() == null && !potentialNames.isEmpty()) {
             card.setCardHolderName(potentialNames.get(0));
+        }
+
+        // Default country if state or known city is found
+        if (card.getCountry() == null && (card.getState() != null || (card.getCity() != null && MAJOR_CITIES.subList(0, 50).contains(card.getCity())))) {
+            card.setCountry("India");
         }
     }
 

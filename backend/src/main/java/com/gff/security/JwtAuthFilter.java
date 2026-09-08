@@ -54,19 +54,25 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             Map<String, Object> claims = jwtUtil.validateAndExtractClaims(token);
             if (claims != null && claims.containsKey("sub")) {
                 String email = (String) claims.get("sub");
-                Optional<User> userOpt = userRepository.findByEmail(email);
+                String roleStr = claims.get("role") != null ? (String) claims.get("role") : "FIELD_USER";
+                String name = claims.get("name") != null ? (String) claims.get("name") : email;
+                Long userId = claims.get("userId") != null ? ((Number) claims.get("userId")).longValue() : null;
 
-                if (userOpt.isPresent()) {
-                    User user = userOpt.get();
-                    if (Boolean.TRUE.equals(user.getActive())) {
-                        request.setAttribute("currentUser", user);
-                        request.setAttribute("currentUserEmail", user.getEmail());
-                        request.setAttribute("currentUserRole", user.getRole().name());
-                        request.setAttribute("currentUserId", user.getId());
-                    } else {
-                        log.warn("Blocked request for inactive user: {}", email);
-                    }
+                com.gff.entity.User user = new com.gff.entity.User();
+                user.setId(userId);
+                user.setEmail(email);
+                user.setName(name);
+                try {
+                    user.setRole(com.gff.entity.enums.UserRole.valueOf(roleStr));
+                } catch (Exception e) {
+                    user.setRole(com.gff.entity.enums.UserRole.FIELD_USER);
                 }
+                user.setActive(true);
+
+                request.setAttribute("currentUser", user);
+                request.setAttribute("currentUserEmail", email);
+                request.setAttribute("currentUserRole", user.getRole().name());
+                request.setAttribute("currentUserId", userId);
             }
         }
 

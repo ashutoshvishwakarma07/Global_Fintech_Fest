@@ -224,13 +224,27 @@ export const apiService = {
       extractedData = {
         documentType: "Visiting Card",
         documentNumber: "VC-" + payload.recordId,
-        cardHolderName: "",
-        companyName: "",
-        designation: "",
-        extractedEmail: "",
-        extractedMobile: "",
-        extractedAddress: "",
-        website: "",
+        name: null,
+        jobTitle: null,
+        companyName: null,
+        department: null,
+        emailAddress: null,
+        mobileNumber: null,
+        workNumber: null,
+        websiteUrl: null,
+        city: null,
+        state: null,
+        postalZipCode: null,
+        country: null,
+        linkedIn: null,
+        twitter: null,
+        cardHolderName: null,
+        extractedName: null,
+        designation: null,
+        extractedEmail: null,
+        extractedMobile: null,
+        extractedAddress: null,
+        website: null,
         confidence: 0,
         rawText: "",
       };
@@ -256,12 +270,26 @@ export const apiService = {
           notes: payload.notes || "",
           imageBase64: base64Data,
           isOffline: false,
-          cardHolderName: extractedData?.cardHolderName || extractedData?.extractedName || "",
-          companyName: extractedData?.companyName || "",
-          designation: extractedData?.designation || "",
-          extractedEmail: extractedData?.extractedEmail || "",
-          extractedMobile: extractedData?.extractedMobile || "",
-          extractedAddress: extractedData?.extractedAddress || "",
+          // 14 Standardized Fields
+          name: extractedData?.name || extractedData?.cardHolderName || extractedData?.extractedName || null,
+          cardHolderName: extractedData?.name || extractedData?.cardHolderName || extractedData?.extractedName || null,
+          jobTitle: extractedData?.jobTitle || extractedData?.designation || null,
+          designation: extractedData?.jobTitle || extractedData?.designation || null,
+          companyName: extractedData?.companyName || null,
+          department: extractedData?.department || null,
+          emailAddress: extractedData?.emailAddress || extractedData?.extractedEmail || null,
+          extractedEmail: extractedData?.emailAddress || extractedData?.extractedEmail || null,
+          mobileNumber: extractedData?.mobileNumber || extractedData?.extractedMobile || null,
+          extractedMobile: extractedData?.mobileNumber || extractedData?.extractedMobile || null,
+          workNumber: extractedData?.workNumber || null,
+          websiteUrl: extractedData?.websiteUrl || extractedData?.website || null,
+          city: extractedData?.city || null,
+          state: extractedData?.state || null,
+          postalZipCode: extractedData?.postalZipCode || null,
+          country: extractedData?.country || null,
+          linkedIn: extractedData?.linkedIn || null,
+          twitter: extractedData?.twitter || null,
+          extractedAddress: extractedData?.extractedAddress || null,
           rawOcrText: extractedData?.rawText || "",
         }),
       });
@@ -286,11 +314,27 @@ export const apiService = {
       }
       if (resJson.data) {
         const d = resJson.data;
-        if (d.cardHolderName) extractedData.cardHolderName = d.cardHolderName;
-        if (d.companyName) extractedData.companyName = d.companyName;
-        if (d.designation) extractedData.designation = d.designation;
-        if (d.extractedEmail) extractedData.extractedEmail = d.extractedEmail;
-        if (d.extractedMobile) extractedData.extractedMobile = d.extractedMobile;
+        const valOrNull = (v: any) => (v !== undefined && v !== null && v !== "" ? v : null);
+        extractedData.name = valOrNull(d.name || d.cardHolderName);
+        extractedData.cardHolderName = extractedData.name;
+        extractedData.extractedName = extractedData.name;
+        extractedData.jobTitle = valOrNull(d.jobTitle || d.designation);
+        extractedData.designation = extractedData.jobTitle;
+        extractedData.companyName = valOrNull(d.companyName);
+        extractedData.department = valOrNull(d.department);
+        extractedData.emailAddress = valOrNull(d.emailAddress || d.extractedEmail);
+        extractedData.extractedEmail = extractedData.emailAddress;
+        extractedData.mobileNumber = valOrNull(d.mobileNumber || d.extractedMobile);
+        extractedData.extractedMobile = extractedData.mobileNumber;
+        extractedData.workNumber = valOrNull(d.workNumber);
+        extractedData.websiteUrl = valOrNull(d.websiteUrl);
+        extractedData.website = extractedData.websiteUrl;
+        extractedData.city = valOrNull(d.city);
+        extractedData.state = valOrNull(d.state);
+        extractedData.postalZipCode = valOrNull(d.postalZipCode);
+        extractedData.country = valOrNull(d.country);
+        extractedData.linkedIn = valOrNull(d.linkedIn);
+        extractedData.twitter = valOrNull(d.twitter);
         if (d.extractedAddress) extractedData.extractedAddress = d.extractedAddress;
         if (d.rawOcrText) extractedData.rawText = d.rawOcrText;
       }
@@ -359,44 +403,92 @@ export const apiService = {
       const data = await this.fetchDocuments(user.email, user.role, query, status);
       if (!data) return [];
       const content = Array.isArray(data.content) ? data.content : Array.isArray(data) ? data : [];
-      return content.map((doc: any): UploadRecord => ({
-        id: doc.recordId,
-        numericId: doc.id,
-        imageUrl: doc.imageUrl?.startsWith("/api/v1")
-          ? `${API_BASE_URL.replace(/\/api\/v1\/?$/, "")}${doc.imageUrl}`
-          : doc.imageUrl || (doc.recordId ? `${API_BASE_URL}/documents/record/${doc.recordId}/image` : ""),
-        uploadedBy: doc.uploaderName || doc.uploaderEmail || "Unknown",
-        userId: doc.uploaderEmail || "user",
-        email: doc.uploaderEmail || "",
-        mobile: doc.uploaderMobile || "",
-        role: normalizeUserRole(doc.uploaderRole),
-        uploadedAt: doc.createdAt ? doc.createdAt.replace("T", " ").substring(0, 16) : "",
-        status: doc.status === "VERIFIED" ? "Verified" : doc.status === "FAILED" ? "Failed" : "Uploaded",
-        ocrStatus: doc.ocrStatus || "PENDING",
-        notes: doc.notes || "",
-        fileSize: doc.fileSize || "1.2 MB",
-        cardHolderName: doc.cardHolderName || undefined,
-        companyName: doc.companyName || undefined,
-        designation: doc.designation || undefined,
-        extractedEmail: doc.extractedEmail || undefined,
-        extractedMobile: doc.extractedMobile || undefined,
-        extractedAddress: doc.extractedAddress || undefined,
-        rawOcrText: doc.rawOcrText || undefined,
-        extractedData: {
-          documentType: "Visiting Card",
-          documentNumber: doc.recordId,
-          cardHolderName: doc.cardHolderName || undefined,
-          extractedName: doc.cardHolderName || undefined,
-          companyName: doc.companyName || undefined,
-          designation: doc.designation || undefined,
-          extractedEmail: doc.extractedEmail || undefined,
-          extractedMobile: doc.extractedMobile || undefined,
-          extractedAddress: doc.extractedAddress || undefined,
-          rawText: doc.rawOcrText || undefined,
-          confidence: doc.ocrStatus === "COMPLETED" ? 97 : 80,
-        },
-        s3Url: doc.imageUrl || undefined,
-      }));
+      const valOrNull = (v: any) => (v !== undefined && v !== null && v !== "" ? v : null);
+
+      return content.map((doc: any): UploadRecord => {
+        const name = valOrNull(doc.name || doc.cardHolderName);
+        const jobTitle = valOrNull(doc.jobTitle || doc.designation);
+        const companyName = valOrNull(doc.companyName);
+        const department = valOrNull(doc.department);
+        const emailAddress = valOrNull(doc.emailAddress || doc.extractedEmail);
+        const mobileNumber = valOrNull(doc.mobileNumber || doc.extractedMobile);
+        const workNumber = valOrNull(doc.workNumber);
+        const websiteUrl = valOrNull(doc.websiteUrl);
+        const city = valOrNull(doc.city);
+        const state = valOrNull(doc.state);
+        const postalZipCode = valOrNull(doc.postalZipCode);
+        const country = valOrNull(doc.country);
+        const linkedIn = valOrNull(doc.linkedIn);
+        const twitter = valOrNull(doc.twitter);
+
+        return {
+          id: doc.recordId,
+          numericId: doc.id,
+          imageUrl: doc.imageUrl?.startsWith("/api/v1")
+            ? `${API_BASE_URL.replace(/\/api\/v1\/?$/, "")}${doc.imageUrl}`
+            : doc.imageUrl || (doc.recordId ? `${API_BASE_URL}/documents/record/${doc.recordId}/image` : ""),
+          uploadedBy: doc.uploaderName || doc.uploaderEmail || "Unknown",
+          userId: doc.uploaderEmail || "user",
+          email: doc.uploaderEmail || "",
+          mobile: doc.uploaderMobile || "",
+          role: normalizeUserRole(doc.uploaderRole),
+          uploadedAt: doc.createdAt ? doc.createdAt.replace("T", " ").substring(0, 16) : "",
+          status: doc.status === "VERIFIED" ? "Verified" : doc.status === "FAILED" ? "Failed" : "Uploaded",
+          ocrStatus: doc.ocrStatus || "PENDING",
+          notes: doc.notes || "",
+          fileSize: doc.fileSize || "1.2 MB",
+          // 14 Standardized Fields
+          name,
+          jobTitle,
+          companyName,
+          department,
+          emailAddress,
+          mobileNumber,
+          workNumber,
+          websiteUrl,
+          city,
+          state,
+          postalZipCode,
+          country,
+          linkedIn,
+          twitter,
+          // Compatibility aliases
+          cardHolderName: name,
+          designation: jobTitle,
+          extractedEmail: emailAddress,
+          extractedMobile: mobileNumber,
+          extractedAddress: valOrNull(doc.extractedAddress),
+          rawOcrText: valOrNull(doc.rawOcrText),
+          extractedData: {
+            documentType: "Visiting Card",
+            documentNumber: doc.recordId,
+            name,
+            jobTitle,
+            companyName,
+            department,
+            emailAddress,
+            mobileNumber,
+            workNumber,
+            websiteUrl,
+            city,
+            state,
+            postalZipCode,
+            country,
+            linkedIn,
+            twitter,
+            cardHolderName: name,
+            extractedName: name,
+            designation: jobTitle,
+            extractedEmail: emailAddress,
+            extractedMobile: mobileNumber,
+            extractedAddress: valOrNull(doc.extractedAddress),
+            website: websiteUrl,
+            rawText: valOrNull(doc.rawOcrText),
+            confidence: doc.ocrStatus === "COMPLETED" ? 97 : 80,
+          },
+          s3Url: doc.imageUrl || undefined,
+        };
+      });
     } catch (err) {
       console.error("[apiService] getLiveRecords error:", err);
       return [];

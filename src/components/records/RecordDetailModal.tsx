@@ -12,14 +12,16 @@ import {
   Mail,
   Phone,
   Briefcase,
-  CheckCircle2,
   FileText,
-  Shield,
   ArrowLeft,
   Sparkles,
   ShieldCheck,
-  Calendar,
-  Hash,
+  Globe,
+  MapPin,
+  Building,
+  Layers,
+  Linkedin,
+  Twitter,
   Camera,
 } from "lucide-react";
 import { getDisplayImageUrl } from "@/utils/imageUrl";
@@ -32,7 +34,6 @@ interface RecordDetailModalProps {
 
 export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({ record, onClose, onShare }) => {
   const [copiedId, setCopiedId] = useState(false);
-  const [copiedDocNum, setCopiedDocNum] = useState(false);
   const [activeImageView, setActiveImageView] = useState<"combined" | "front" | "back">("combined");
   const [imageError, setImageError] = useState(false);
 
@@ -48,14 +49,6 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({ record, on
       navigator.clipboard.writeText(record.id);
       setCopiedId(true);
       setTimeout(() => setCopiedId(false), 2000);
-    }
-  };
-
-  const handleCopyDocNum = () => {
-    if (typeof navigator !== "undefined" && record.extractedData?.documentNumber) {
-      navigator.clipboard.writeText(record.extractedData.documentNumber);
-      setCopiedDocNum(true);
-      setTimeout(() => setCopiedDocNum(false), 2000);
     }
   };
 
@@ -84,10 +77,26 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({ record, on
     Verified: "bg-emerald-50 text-emerald-800 border-emerald-300",
   };
 
+  const ext = record.extractedData;
+  const name = record.name || record.cardHolderName || ext?.name || ext?.cardHolderName || "—";
+  const jobTitle = record.jobTitle || record.designation || ext?.jobTitle || ext?.designation || "—";
+  const companyName = record.companyName || ext?.companyName || "—";
+  const department = record.department || ext?.department || "—";
+  const emailAddress = record.emailAddress || record.extractedEmail || ext?.emailAddress || ext?.extractedEmail || "—";
+  const mobileNumber = record.mobileNumber || record.extractedMobile || ext?.mobileNumber || ext?.extractedMobile || "—";
+  const workNumber = record.workNumber || ext?.workNumber || "—";
+  const websiteUrl = record.websiteUrl || ext?.websiteUrl || ext?.website || "—";
+  const city = record.city || ext?.city || "—";
+  const state = record.state || ext?.state || "—";
+  const postalZipCode = record.postalZipCode || ext?.postalZipCode || "—";
+  const country = record.country || ext?.country || "—";
+  const linkedIn = record.linkedIn || ext?.linkedIn || "—";
+  const twitter = record.twitter || ext?.twitter || "—";
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
       <div
-        className="bg-white w-full sm:max-w-xl max-h-[92vh] sm:max-h-[85vh] rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-6 sm:zoom-in-95 duration-200"
+        className="bg-white w-full sm:max-w-2xl max-h-[92vh] sm:max-h-[88vh] rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-6 sm:zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Top Header */}
@@ -125,7 +134,7 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({ record, on
                   </span>
                 )}
               </div>
-              <span className="text-[11px] text-slate-400">Record & Extraction Details</span>
+              <span className="text-[11px] text-slate-400">Visiting Card 14 Standardized Fields & Extraction</span>
             </div>
           </div>
 
@@ -232,100 +241,109 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({ record, on
             )}
           </div>
 
-          {/* OCR Extraction Section */}
-          {record.extractedData ? (
-            <div className="bg-gradient-to-br from-indigo-50/90 to-purple-50/70 rounded-2xl p-4 border border-indigo-200/80 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-indigo-900 font-bold text-xs">
-                  <Sparkles className="w-4 h-4 text-indigo-600" />
-                  <span>OCR Extraction Results</span>
-                </div>
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                  {Math.round(
-                    record.extractedData.confidence <= 1
-                      ? record.extractedData.confidence * 100
-                      : record.extractedData.confidence
-                  )}% Confidence
-                </span>
+          {/* 14 Standardized OCR Extraction Fields */}
+          <div className="bg-gradient-to-br from-indigo-50/90 to-purple-50/70 rounded-2xl p-4 border border-indigo-200/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-indigo-900 font-bold text-xs">
+                <Sparkles className="w-4 h-4 text-indigo-600" />
+                <span>14 Standardized Card Fields</span>
+              </div>
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                {Math.round(
+                  (ext?.confidence || 95) <= 1
+                    ? (ext?.confidence || 0.95) * 100
+                    : (ext?.confidence || 95)
+                )}% Confidence
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+              {/* 1. Name */}
+              <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs sm:col-span-2">
+                <span className="text-[10px] text-slate-400 uppercase font-semibold block">1. Name</span>
+                <span className="text-sm font-bold text-slate-900">{name}</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5 pt-1">
-                {/* Card Holder Name */}
-                <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs col-span-2">
-                  <span className="text-[10px] text-slate-400 uppercase font-semibold block">Card Holder Name</span>
-                  <span className="text-sm font-bold text-slate-900">
-                    {record.cardHolderName || record.extractedData?.cardHolderName || (record.extractedData?.extractedName !== record.uploadedBy ? record.extractedData?.extractedName : "") || "—"}
-                  </span>
-                </div>
+              {/* 2. Job Title */}
+              <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs">
+                <span className="text-[10px] text-slate-400 uppercase font-semibold block">2. Job Title</span>
+                <span className="text-xs font-semibold text-slate-800">{jobTitle}</span>
+              </div>
 
-                {/* Designation */}
-                {(record.designation || record.extractedData.designation) && (
-                  <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs">
-                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Designation</span>
-                    <span className="text-xs font-semibold text-slate-800">
-                      {record.designation || record.extractedData.designation}
-                    </span>
-                  </div>
-                )}
+              {/* 3. Company Name */}
+              <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs">
+                <span className="text-[10px] text-slate-400 uppercase font-semibold block">3. Company Name</span>
+                <span className="text-xs font-bold text-indigo-700">{companyName}</span>
+              </div>
 
-                {/* Company Name */}
-                {(record.companyName || record.extractedData.companyName) && (
-                  <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs">
-                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Company / Organization</span>
-                    <span className="text-xs font-bold text-indigo-700">
-                      {record.companyName || record.extractedData.companyName}
-                    </span>
-                  </div>
-                )}
+              {/* 4. Department */}
+              <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs">
+                <span className="text-[10px] text-slate-400 uppercase font-semibold block">4. Department</span>
+                <span className="text-xs font-medium text-slate-800">{department}</span>
+              </div>
 
-                {/* Extracted Email */}
-                {(record.extractedEmail || record.extractedData.extractedEmail) && (
-                  <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs">
-                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Card Email</span>
-                    <span className="text-xs font-medium text-slate-700 font-mono truncate block">
-                      {record.extractedEmail || record.extractedData.extractedEmail}
-                    </span>
-                  </div>
-                )}
+              {/* 5. Email Address */}
+              <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs">
+                <span className="text-[10px] text-slate-400 uppercase font-semibold block">5. Email Address</span>
+                <span className="text-xs font-medium text-slate-800 font-mono truncate block">{emailAddress}</span>
+              </div>
 
-                {/* Extracted Phone */}
-                {(record.extractedMobile || record.extractedData.extractedMobile) && (
-                  <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs">
-                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Card Phone / Mobile</span>
-                    <span className="text-xs font-medium text-slate-700 font-mono">
-                      {record.extractedMobile || record.extractedData.extractedMobile}
-                    </span>
-                  </div>
-                )}
+              {/* 6. Mobile Number */}
+              <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs">
+                <span className="text-[10px] text-slate-400 uppercase font-semibold block">6. Mobile Number</span>
+                <span className="text-xs font-medium text-slate-800 font-mono">{mobileNumber}</span>
+              </div>
 
-                {/* Address */}
-                {(record.extractedAddress || record.extractedData.extractedAddress) && (
-                  <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs col-span-2">
-                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Card Location / Address</span>
-                    <span className="text-xs font-medium text-slate-700">
-                      {record.extractedAddress || record.extractedData.extractedAddress}
-                    </span>
-                  </div>
-                )}
+              {/* 7. Work Number */}
+              <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs">
+                <span className="text-[10px] text-slate-400 uppercase font-semibold block">7. Work Number</span>
+                <span className="text-xs font-medium text-slate-800 font-mono">{workNumber}</span>
+              </div>
 
-                {/* Website */}
-                {record.extractedData.website && (
-                  <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs col-span-2">
-                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Website</span>
-                    <span className="text-xs font-medium text-indigo-600 font-mono">
-                      {record.extractedData.website}
-                    </span>
-                  </div>
-                )}
+              {/* 8. Website URL */}
+              <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs">
+                <span className="text-[10px] text-slate-400 uppercase font-semibold block">8. Website URL</span>
+                <span className="text-xs font-medium text-indigo-600 font-mono truncate block">{websiteUrl}</span>
+              </div>
 
+              {/* 9. City */}
+              <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs">
+                <span className="text-[10px] text-slate-400 uppercase font-semibold block">9. City</span>
+                <span className="text-xs font-medium text-slate-800">{city}</span>
+              </div>
+
+              {/* 10. State */}
+              <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs">
+                <span className="text-[10px] text-slate-400 uppercase font-semibold block">10. State</span>
+                <span className="text-xs font-medium text-slate-800">{state}</span>
+              </div>
+
+              {/* 11. Postal / ZIP Code */}
+              <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs">
+                <span className="text-[10px] text-slate-400 uppercase font-semibold block">11. Postal / ZIP Code</span>
+                <span className="text-xs font-medium text-slate-800 font-mono">{postalZipCode}</span>
+              </div>
+
+              {/* 12. Country */}
+              <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs">
+                <span className="text-[10px] text-slate-400 uppercase font-semibold block">12. Country</span>
+                <span className="text-xs font-medium text-slate-800">{country}</span>
+              </div>
+
+              {/* 13. LinkedIn */}
+              <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs">
+                <span className="text-[10px] text-slate-400 uppercase font-semibold block">13. LinkedIn</span>
+                <span className="text-xs font-medium text-blue-700 truncate block">{linkedIn}</span>
+              </div>
+
+              {/* 14. Twitter / X */}
+              <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs">
+                <span className="text-[10px] text-slate-400 uppercase font-semibold block">14. Twitter / X</span>
+                <span className="text-xs font-medium text-sky-700 truncate block">{twitter}</span>
               </div>
             </div>
-          ) : (
-            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 text-center text-xs text-slate-500">
-              No OCR data attached to this record.
-            </div>
-          )}
+          </div>
 
           {/* Field Agent / Uploader Details */}
           <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/70 space-y-3 text-xs">

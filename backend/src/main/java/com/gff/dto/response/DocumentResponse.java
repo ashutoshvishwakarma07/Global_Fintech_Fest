@@ -26,13 +26,26 @@ public class DocumentResponse {
     private Integer retryCount;
     private String errorMessage;
 
-    // OCR Results
+    // 14 Standardized Visiting Card Fields
     private OcrStatus ocrStatus;
+    private String name;
     private String cardHolderName;
-    private String companyName;
+    private String jobTitle;
     private String designation;
+    private String companyName;
+    private String department;
+    private String emailAddress;
     private String extractedEmail;
+    private String mobileNumber;
     private String extractedMobile;
+    private String workNumber;
+    private String websiteUrl;
+    private String city;
+    private String state;
+    private String postalZipCode;
+    private String country;
+    private String linkedIn;
+    private String twitter;
     private String extractedAddress;
     private String rawOcrText;
     private LocalDateTime ocrProcessedAt;
@@ -51,6 +64,7 @@ public class DocumentResponse {
         response.setUploaderName(card.getUploaderName());
         response.setUploaderEmail(card.getUploaderEmail());
         response.setUploaderMobile(card.getUploaderMobile());
+        response.setUploaderRole(card.getUploaderRole());
         String img = card.getImageUrl();
         if (img == null || img.trim().isEmpty()) {
             img = "/api/v1/documents/record/" + card.getRecordId() + "/image";
@@ -66,11 +80,27 @@ public class DocumentResponse {
         response.setRetryCount(card.getRetryCount());
         response.setErrorMessage(card.getErrorMessage());
         response.setOcrStatus(card.getOcrStatus());
+
+        // 14 Standardized Fields
+        response.setName(card.getCardHolderName());
         response.setCardHolderName(card.getCardHolderName());
-        response.setCompanyName(card.getCompanyName());
+        response.setJobTitle(card.getDesignation());
         response.setDesignation(card.getDesignation());
+        response.setCompanyName(card.getCompanyName());
+        response.setDepartment(card.getDepartment());
+        response.setEmailAddress(card.getExtractedEmail());
         response.setExtractedEmail(card.getExtractedEmail());
+        response.setMobileNumber(card.getExtractedMobile());
         response.setExtractedMobile(card.getExtractedMobile());
+        response.setWorkNumber(card.getWorkNumber());
+        response.setWebsiteUrl(card.getWebsiteUrl());
+        response.setCity(card.getCity());
+        response.setState(card.getState());
+        response.setPostalZipCode(card.getPostalZipCode());
+        response.setCountry(card.getCountry());
+        response.setLinkedIn(card.getLinkedIn());
+        response.setTwitter(card.getTwitter());
+
         response.setExtractedAddress(card.getExtractedAddress());
         response.setRawOcrText(card.getRawOcrText());
         response.setOcrProcessedAt(card.getOcrProcessedAt());
@@ -131,21 +161,71 @@ public class DocumentResponse {
     public OcrStatus getOcrStatus() { return ocrStatus; }
     public void setOcrStatus(OcrStatus ocrStatus) { this.ocrStatus = ocrStatus; }
 
-    public String getCardHolderName() { return cardHolderName; }
-    public void setCardHolderName(String cardHolderName) { this.cardHolderName = cardHolderName; }
+    // 1. Name
+    public String getName() { return name != null ? name : cardHolderName; }
+    public void setName(String name) { this.name = name; if (this.cardHolderName == null) this.cardHolderName = name; }
+    public String getCardHolderName() { return cardHolderName != null ? cardHolderName : name; }
+    public void setCardHolderName(String cardHolderName) { this.cardHolderName = cardHolderName; if (this.name == null) this.name = cardHolderName; }
 
+    // 2. Job Title
+    public String getJobTitle() { return jobTitle != null ? jobTitle : designation; }
+    public void setJobTitle(String jobTitle) { this.jobTitle = jobTitle; if (this.designation == null) this.designation = jobTitle; }
+    public String getDesignation() { return designation != null ? designation : jobTitle; }
+    public void setDesignation(String designation) { this.designation = designation; if (this.jobTitle == null) this.jobTitle = designation; }
+
+    // 3. Company Name
     public String getCompanyName() { return companyName; }
     public void setCompanyName(String companyName) { this.companyName = companyName; }
 
-    public String getDesignation() { return designation; }
-    public void setDesignation(String designation) { this.designation = designation; }
+    // 4. Department
+    public String getDepartment() { return department; }
+    public void setDepartment(String department) { this.department = department; }
 
-    public String getExtractedEmail() { return extractedEmail; }
-    public void setExtractedEmail(String extractedEmail) { this.extractedEmail = extractedEmail; }
+    // 5. Email Address
+    public String getEmailAddress() { return emailAddress != null ? emailAddress : extractedEmail; }
+    public void setEmailAddress(String emailAddress) { this.emailAddress = emailAddress; if (this.extractedEmail == null) this.extractedEmail = emailAddress; }
+    public String getExtractedEmail() { return extractedEmail != null ? extractedEmail : emailAddress; }
+    public void setExtractedEmail(String extractedEmail) { this.extractedEmail = extractedEmail; if (this.emailAddress == null) this.emailAddress = extractedEmail; }
 
-    public String getExtractedMobile() { return extractedMobile; }
-    public void setExtractedMobile(String extractedMobile) { this.extractedMobile = extractedMobile; }
+    // 6. Mobile Number
+    public String getMobileNumber() { return mobileNumber != null ? mobileNumber : extractedMobile; }
+    public void setMobileNumber(String mobileNumber) { this.mobileNumber = mobileNumber; if (this.extractedMobile == null) this.extractedMobile = mobileNumber; }
+    public String getExtractedMobile() { return extractedMobile != null ? extractedMobile : mobileNumber; }
+    public void setExtractedMobile(String extractedMobile) { this.extractedMobile = extractedMobile; if (this.mobileNumber == null) this.mobileNumber = extractedMobile; }
 
+    // 7. Work Number
+    public String getWorkNumber() { return workNumber; }
+    public void setWorkNumber(String workNumber) { this.workNumber = workNumber; }
+
+    // 8. Website URL
+    public String getWebsiteUrl() { return websiteUrl; }
+    public void setWebsiteUrl(String websiteUrl) { this.websiteUrl = websiteUrl; }
+
+    // 9. City
+    public String getCity() { return city; }
+    public void setCity(String city) { this.city = city; }
+
+    // 10. State
+    public String getState() { return state; }
+    public void setState(String state) { this.state = state; }
+
+    // 11. Postal / ZIP Code
+    public String getPostalZipCode() { return postalZipCode; }
+    public void setPostalZipCode(String postalZipCode) { this.postalZipCode = postalZipCode; }
+
+    // 12. Country
+    public String getCountry() { return country; }
+    public void setCountry(String country) { this.country = country; }
+
+    // 13. LinkedIn
+    public String getLinkedIn() { return linkedIn; }
+    public void setLinkedIn(String linkedIn) { this.linkedIn = linkedIn; }
+
+    // 14. Twitter / X
+    public String getTwitter() { return twitter; }
+    public void setTwitter(String twitter) { this.twitter = twitter; }
+
+    // Address & Raw OCR
     public String getExtractedAddress() { return extractedAddress; }
     public void setExtractedAddress(String extractedAddress) { this.extractedAddress = extractedAddress; }
 

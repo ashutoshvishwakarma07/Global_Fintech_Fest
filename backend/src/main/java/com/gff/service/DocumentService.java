@@ -109,7 +109,8 @@ public class DocumentService {
             }
         }
 
-        boolean hasOcr = request.getCardHolderName() != null && !request.getCardHolderName().trim().isEmpty();
+        boolean hasOcr = (request.getCardHolderName() != null && !request.getCardHolderName().trim().isEmpty())
+                || (request.getName() != null && !request.getName().trim().isEmpty());
 
         // Enforce verified user identity from server-side session token
         String uploaderName = (currentUser != null && currentUser.getName() != null) ? currentUser.getName() : request.getUploaderName();
@@ -131,11 +132,22 @@ public class DocumentService {
                 .s3Bucket(s3Bucket)
                 .status(Boolean.TRUE.equals(request.getIsOffline()) ? RecordStatus.PENDING_UPLOAD : RecordStatus.UPLOADED)
                 .isOffline(request.getIsOffline() != null ? request.getIsOffline() : false)
-                .cardHolderName(request.getCardHolderName())
+                // 14 Standardized Fields
+                .cardHolderName(request.getName() != null ? request.getName() : request.getCardHolderName())
+                .designation(request.getJobTitle() != null ? request.getJobTitle() : request.getDesignation())
                 .companyName(request.getCompanyName())
-                .designation(request.getDesignation())
-                .extractedEmail(request.getExtractedEmail())
-                .extractedMobile(request.getExtractedMobile())
+                .department(request.getDepartment())
+                .extractedEmail(request.getEmailAddress() != null ? request.getEmailAddress() : request.getExtractedEmail())
+                .extractedMobile(request.getMobileNumber() != null ? request.getMobileNumber() : request.getExtractedMobile())
+                .workNumber(request.getWorkNumber())
+                .websiteUrl(request.getWebsiteUrl())
+                .city(request.getCity())
+                .state(request.getState())
+                .postalZipCode(request.getPostalZipCode())
+                .country(request.getCountry())
+                .linkedIn(request.getLinkedIn())
+                .twitter(request.getTwitter())
+                // Address & OCR metadata
                 .extractedAddress(request.getExtractedAddress())
                 .rawOcrText(request.getRawOcrText())
                 .ocrStatus(hasOcr ? OcrStatus.COMPLETED : OcrStatus.PENDING)

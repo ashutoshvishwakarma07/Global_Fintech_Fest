@@ -143,9 +143,26 @@ public class IrisService {
             if (kv.has("name")) card.setCardHolderName(kv.get("name").asText());
             if (kv.has("company")) card.setCompanyName(kv.get("company").asText());
             if (kv.has("designation")) card.setDesignation(kv.get("designation").asText());
+            if (kv.has("department")) card.setDepartment(kv.get("department").asText());
             if (kv.has("email")) card.setExtractedEmail(kv.get("email").asText());
-            if (kv.has("phone") || kv.has("mobile")) {
+            if (kv.has("mobile") || kv.has("phone")) {
                 card.setExtractedMobile(kv.has("mobile") ? kv.get("mobile").asText() : kv.get("phone").asText());
+            }
+            if (kv.has("workNumber") || kv.has("work_phone") || kv.has("telephone")) {
+                card.setWorkNumber(kv.has("workNumber") ? kv.get("workNumber").asText() : (kv.has("work_phone") ? kv.get("work_phone").asText() : kv.get("telephone").asText()));
+            }
+            if (kv.has("website") || kv.has("websiteUrl")) {
+                card.setWebsiteUrl(kv.has("websiteUrl") ? kv.get("websiteUrl").asText() : kv.get("website").asText());
+            }
+            if (kv.has("city")) card.setCity(kv.get("city").asText());
+            if (kv.has("state")) card.setState(kv.get("state").asText());
+            if (kv.has("pincode") || kv.has("postalZipCode") || kv.has("zip")) {
+                card.setPostalZipCode(kv.has("postalZipCode") ? kv.get("postalZipCode").asText() : (kv.has("pincode") ? kv.get("pincode").asText() : kv.get("zip").asText()));
+            }
+            if (kv.has("country")) card.setCountry(kv.get("country").asText());
+            if (kv.has("linkedin")) card.setLinkedIn(kv.get("linkedin").asText());
+            if (kv.has("twitter") || kv.has("x")) {
+                card.setTwitter(kv.has("twitter") ? kv.get("twitter").asText() : kv.get("x").asText());
             }
             if (kv.has("address")) card.setExtractedAddress(kv.get("address").asText());
         }

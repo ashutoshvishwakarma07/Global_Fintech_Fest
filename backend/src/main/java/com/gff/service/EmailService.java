@@ -367,12 +367,30 @@ public class EmailService {
                 ? card.getCompanyName() : "N/A";
         String designation = card.getDesignation() != null && !card.getDesignation().trim().isEmpty()
                 ? card.getDesignation() : "N/A";
+        String department = card.getDepartment() != null && !card.getDepartment().trim().isEmpty()
+                ? card.getDepartment() : null;
         String mobile = card.getExtractedMobile() != null && !card.getExtractedMobile().trim().isEmpty()
                 ? card.getExtractedMobile() : "N/A";
+        String workNumber = card.getWorkNumber() != null && !card.getWorkNumber().trim().isEmpty()
+                ? card.getWorkNumber() : null;
         String email = card.getExtractedEmail() != null && !card.getExtractedEmail().trim().isEmpty()
                 ? card.getExtractedEmail() : "N/A";
+        String websiteUrl = card.getWebsiteUrl() != null && !card.getWebsiteUrl().trim().isEmpty()
+                ? card.getWebsiteUrl() : null;
+        String city = card.getCity() != null && !card.getCity().trim().isEmpty()
+                ? card.getCity() : null;
+        String state = card.getState() != null && !card.getState().trim().isEmpty()
+                ? card.getState() : null;
+        String postalZipCode = card.getPostalZipCode() != null && !card.getPostalZipCode().trim().isEmpty()
+                ? card.getPostalZipCode() : null;
+        String country = card.getCountry() != null && !card.getCountry().trim().isEmpty()
+                ? card.getCountry() : null;
+        String linkedIn = card.getLinkedIn() != null && !card.getLinkedIn().trim().isEmpty()
+                ? card.getLinkedIn() : null;
+        String twitter = card.getTwitter() != null && !card.getTwitter().trim().isEmpty()
+                ? card.getTwitter() : null;
         String address = card.getExtractedAddress() != null && !card.getExtractedAddress().trim().isEmpty()
-                ? card.getExtractedAddress() : "N/A";
+                ? card.getExtractedAddress() : null;
         String notes = card.getNotes() != null && !card.getNotes().trim().isEmpty()
                 ? card.getNotes() : null;
         String imageUrl = card.getImageUrl() != null && !card.getImageUrl().trim().isEmpty()
@@ -394,9 +412,9 @@ public class EmailService {
                 .card-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 20px; margin-bottom: 20px; }
                 .card-title { font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 2px; }
                 .card-subtitle { font-size: 13px; color: #2563eb; font-weight: 600; margin-bottom: 16px; }
-                .detail-row { display: flex; padding: 7px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
-                .detail-label { width: 120px; color: #64748b; font-weight: 600; }
-                .detail-value { flex: 1; color: #1e293b; font-weight: 500; }
+                .field-row td { padding: 6px 0; font-size: 13px; }
+                .field-label { color: #64748b; font-weight: 600; width: 120px; }
+                .field-value { color: #0f172a; font-weight: 500; }
                 .image-box { text-align: center; margin: 20px 0 10px 0; }
                 .image-box img { max-width: 100%; max-height: 240px; border-radius: 8px; border: 1px solid #cbd5e1; object-fit: contain; }
                 .footer { text-align: center; padding: 18px 24px; font-size: 12px; color: #64748b; background: #f8fafc; border-top: 1px solid #e2e8f0; }
@@ -418,17 +436,75 @@ public class EmailService {
                     </div>
                     <div class="card-subtitle">""").append(designation).append(" • ").append(company).append("""
                     </div>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                      <tr><td style="padding: 6px 0; color: #64748b; font-weight: 600; width: 110px;">Company:</td><td style="padding: 6px 0; color: #0f172a; font-weight: 500;">""").append(company).append("""
+                    <table style="width: 100%; border-collapse: collapse;">
+                      <tr class="field-row"><td class="field-label">Company:</td><td class="field-value">""").append(company).append("""
                       </td></tr>
-                      <tr><td style="padding: 6px 0; color: #64748b; font-weight: 600;">Designation:</td><td style="padding: 6px 0; color: #0f172a; font-weight: 500;">""").append(designation).append("""
+                      <tr class="field-row"><td class="field-label">Job Title:</td><td class="field-value">""").append(designation).append("""
                       </td></tr>
-                      <tr><td style="padding: 6px 0; color: #64748b; font-weight: 600;">Phone:</td><td style="padding: 6px 0; color: #0f172a; font-weight: 500; font-family: monospace;">""").append(mobile).append("""
+            """);
+
+        if (department != null) {
+            html.append("""
+                      <tr class="field-row"><td class="field-label">Department:</td><td class="field-value">""").append(department).append("""
                       </td></tr>
-                      <tr><td style="padding: 6px 0; color: #64748b; font-weight: 600;">Email:</td><td style="padding: 6px 0; color: #2563eb; font-weight: 500;">""").append(email).append("""
+            """);
+        }
+
+        html.append("""
+                      <tr class="field-row"><td class="field-label">Email:</td><td class="field-value" style="color: #2563eb;"><a href="mailto: """).append(email).append("""
+                      " style="color: #2563eb; text-decoration: none;">""").append(email).append("""
+                      </a></td></tr>
+                      <tr class="field-row"><td class="field-label">Mobile Number:</td><td class="field-value" style="font-family: monospace;">""").append(mobile).append("""
                       </td></tr>
-                      <tr><td style="padding: 6px 0; color: #64748b; font-weight: 600;">Address:</td><td style="padding: 6px 0; color: #0f172a; font-weight: 500;">""").append(address).append("""
+            """);
+
+        if (workNumber != null) {
+            html.append("""
+                      <tr class="field-row"><td class="field-label">Work Number:</td><td class="field-value" style="font-family: monospace;">""").append(workNumber).append("""
                       </td></tr>
+            """);
+        }
+
+        if (websiteUrl != null) {
+            html.append("""
+                      <tr class="field-row"><td class="field-label">Website:</td><td class="field-value"><a href=\"""").append(websiteUrl.startsWith("http") ? websiteUrl : "https://" + websiteUrl).append("""
+                      \" style="color: #2563eb;" target="_blank">""").append(websiteUrl).append("""
+                      </a></td></tr>
+            """);
+        }
+
+        if (city != null || state != null || postalZipCode != null || country != null) {
+            String locationStr = String.join(", ", Arrays.asList(city, state, postalZipCode, country).stream().filter(s -> s != null && !s.isEmpty()).toList());
+            html.append("""
+                      <tr class="field-row"><td class="field-label">Location:</td><td class="field-value">""").append(locationStr).append("""
+                      </td></tr>
+            """);
+        }
+
+        if (address != null) {
+            html.append("""
+                      <tr class="field-row"><td class="field-label">Full Address:</td><td class="field-value">""").append(address).append("""
+                      </td></tr>
+            """);
+        }
+
+        if (linkedIn != null) {
+            html.append("""
+                      <tr class="field-row"><td class="field-label">LinkedIn:</td><td class="field-value"><a href=\"""").append(linkedIn.startsWith("http") ? linkedIn : "https://" + linkedIn).append("""
+                      \" style="color: #2563eb;" target="_blank">""").append(linkedIn).append("""
+                      </a></td></tr>
+            """);
+        }
+
+        if (twitter != null) {
+            html.append("""
+                      <tr class="field-row"><td class="field-label">Twitter / X:</td><td class="field-value"><a href=\"""").append(twitter.startsWith("http") ? twitter : "https://" + twitter).append("""
+                      \" style="color: #2563eb;" target="_blank">""").append(twitter).append("""
+                      </a></td></tr>
+            """);
+        }
+
+        html.append("""
                     </table>
                   </div>
             """);

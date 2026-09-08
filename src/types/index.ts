@@ -36,19 +36,33 @@ export type DocumentType =
 
 export interface ExtractedData {
   documentType: DocumentType;
-  documentNumber?: string;
-  extractedName?: string;
-  name?: string;
-  cardHolderName?: string;
-  companyName?: string;
-  designation?: string;
-  extractedEmail?: string;
-  extractedMobile?: string;
-  extractedAddress?: string;
-  website?: string;
-  issueDate?: string;
+  documentNumber?: string | null;
+  // 14 Standardized Visiting Card Fields (Explicitly null if not detected)
+  name: string | null;
+  jobTitle: string | null;
+  companyName: string | null;
+  department: string | null;
+  emailAddress: string | null;
+  mobileNumber: string | null;
+  workNumber: string | null;
+  websiteUrl: string | null;
+  city: string | null;
+  state: string | null;
+  postalZipCode: string | null;
+  country: string | null;
+  linkedIn: string | null;
+  twitter: string | null;
+  // Compatibility & metadata fields
+  cardHolderName?: string | null;
+  extractedName?: string | null;
+  designation?: string | null;
+  extractedEmail?: string | null;
+  extractedMobile?: string | null;
+  extractedAddress?: string | null;
+  website?: string | null;
+  issueDate?: string | null;
   confidence: number; // e.g. 98.6%
-  rawText?: string;
+  rawText?: string | null;
 }
 
 export type CaptureMode = "single" | "two-sided";
@@ -68,13 +82,28 @@ export interface UploadRecord {
   retryCount?: number;
   errorMessage?: string | null;
   ocrStatus?: string;
-  cardHolderName?: string;
-  companyName?: string;
-  designation?: string;
-  extractedEmail?: string;
-  extractedMobile?: string;
-  extractedAddress?: string;
-  rawOcrText?: string;
+  // 14 Standardized Fields
+  name?: string | null;
+  jobTitle?: string | null;
+  companyName?: string | null;
+  department?: string | null;
+  emailAddress?: string | null;
+  mobileNumber?: string | null;
+  workNumber?: string | null;
+  websiteUrl?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postalZipCode?: string | null;
+  country?: string | null;
+  linkedIn?: string | null;
+  twitter?: string | null;
+  // Compatibility aliases
+  cardHolderName?: string | null;
+  designation?: string | null;
+  extractedEmail?: string | null;
+  extractedMobile?: string | null;
+  extractedAddress?: string | null;
+  rawOcrText?: string | null;
   extractedData?: ExtractedData;
   captureMode?: CaptureMode;
   frontImageUrl?: string;

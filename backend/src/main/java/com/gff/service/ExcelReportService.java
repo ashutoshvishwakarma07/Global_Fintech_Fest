@@ -21,7 +21,7 @@ import java.util.Map;
 
 /**
  * Service to generate rich, formatted Excel (.xlsx) spreadsheets using Apache POI.
- * Creates a "Summary" sheet and an "All Documents" sheet with headers, styles, and hyperlinks.
+ * Creates a "Summary" sheet and an "All Documents" sheet with all 14 standardized visiting card fields.
  */
 @Service
 public class ExcelReportService {
@@ -120,12 +120,14 @@ public class ExcelReportService {
             Cell secCell = cardsSecRow.createCell(0);
             secCell.setCellValue("Extracted Visiting Cards - OCR Data Summary");
             secCell.setCellStyle(summaryTitleStyle);
-            summarySheet.addMergedRegion(new CellRangeAddress(sumRowIdx - 1, sumRowIdx - 1, 0, 7));
+            summarySheet.addMergedRegion(new CellRangeAddress(sumRowIdx - 1, sumRowIdx - 1, 0, 15));
 
-            // Tabular Header on Sheet 1
+            // Tabular Header on Sheet 1 (Standardized 14 Fields + Meta)
             String[] summaryTableHeaders = {
-                    "#", "Card Holder Name", "Company Name", "Designation",
-                    "Mobile / Phone", "Email", "OCR Status", "Uploaded By"
+                    "#", "Name", "Job Title", "Company Name", "Department",
+                    "Email Address", "Mobile Number", "Work Number", "Website URL",
+                    "City", "State", "Postal/ZIP Code", "Country", "LinkedIn", "Twitter/X",
+                    "OCR Status", "Uploaded By"
             };
             Row sumTblHeader = summarySheet.createRow(sumRowIdx++);
             sumTblHeader.setHeightInPoints(24);
@@ -140,18 +142,28 @@ public class ExcelReportService {
                 Row row = summarySheet.createRow(sumRowIdx++);
                 row.setHeightInPoints(20);
 
-                Cell c0 = row.createCell(0); c0.setCellValue(cardIdx++); c0.setCellStyle(dataRowStyle);
-                Cell c1 = row.createCell(1); c1.setCellValue(card.getCardHolderName() != null ? card.getCardHolderName() : "N/A"); c1.setCellStyle(dataRowStyle);
-                Cell c2 = row.createCell(2); c2.setCellValue(card.getCompanyName() != null ? card.getCompanyName() : "N/A"); c2.setCellStyle(dataRowStyle);
-                Cell c3 = row.createCell(3); c3.setCellValue(card.getDesignation() != null ? card.getDesignation() : "N/A"); c3.setCellStyle(dataRowStyle);
-                Cell c4 = row.createCell(4); c4.setCellValue(card.getExtractedMobile() != null ? card.getExtractedMobile() : "N/A"); c4.setCellStyle(dataRowStyle);
-                Cell c5 = row.createCell(5); c5.setCellValue(card.getExtractedEmail() != null ? card.getExtractedEmail() : "N/A"); c5.setCellStyle(dataRowStyle);
+                int col = 0;
+                Cell c0 = row.createCell(col++); c0.setCellValue(cardIdx++); c0.setCellStyle(dataRowStyle);
+                Cell c1 = row.createCell(col++); c1.setCellValue(card.getCardHolderName() != null ? card.getCardHolderName() : "N/A"); c1.setCellStyle(dataRowStyle);
+                Cell c2 = row.createCell(col++); c2.setCellValue(card.getDesignation() != null ? card.getDesignation() : "N/A"); c2.setCellStyle(dataRowStyle);
+                Cell c3 = row.createCell(col++); c3.setCellValue(card.getCompanyName() != null ? card.getCompanyName() : "N/A"); c3.setCellStyle(dataRowStyle);
+                Cell c4 = row.createCell(col++); c4.setCellValue(card.getDepartment() != null ? card.getDepartment() : "N/A"); c4.setCellStyle(dataRowStyle);
+                Cell c5 = row.createCell(col++); c5.setCellValue(card.getExtractedEmail() != null ? card.getExtractedEmail() : "N/A"); c5.setCellStyle(dataRowStyle);
+                Cell c6 = row.createCell(col++); c6.setCellValue(card.getExtractedMobile() != null ? card.getExtractedMobile() : "N/A"); c6.setCellStyle(dataRowStyle);
+                Cell c7 = row.createCell(col++); c7.setCellValue(card.getWorkNumber() != null ? card.getWorkNumber() : "N/A"); c7.setCellStyle(dataRowStyle);
+                Cell c8 = row.createCell(col++); c8.setCellValue(card.getWebsiteUrl() != null ? card.getWebsiteUrl() : "N/A"); c8.setCellStyle(dataRowStyle);
+                Cell c9 = row.createCell(col++); c9.setCellValue(card.getCity() != null ? card.getCity() : "N/A"); c9.setCellStyle(dataRowStyle);
+                Cell c10 = row.createCell(col++); c10.setCellValue(card.getState() != null ? card.getState() : "N/A"); c10.setCellStyle(dataRowStyle);
+                Cell c11 = row.createCell(col++); c11.setCellValue(card.getPostalZipCode() != null ? card.getPostalZipCode() : "N/A"); c11.setCellStyle(dataRowStyle);
+                Cell c12 = row.createCell(col++); c12.setCellValue(card.getCountry() != null ? card.getCountry() : "N/A"); c12.setCellStyle(dataRowStyle);
+                Cell c13 = row.createCell(col++); c13.setCellValue(card.getLinkedIn() != null ? card.getLinkedIn() : "N/A"); c13.setCellStyle(dataRowStyle);
+                Cell c14 = row.createCell(col++); c14.setCellValue(card.getTwitter() != null ? card.getTwitter() : "N/A"); c14.setCellStyle(dataRowStyle);
                 
-                Cell c6 = row.createCell(6);
-                c6.setCellValue(card.getOcrStatus() != null ? card.getOcrStatus().name() : "UNKNOWN");
-                c6.setCellStyle(card.getOcrStatus() == com.gff.entity.enums.OcrStatus.COMPLETED ? completedStatusStyle : failedStatusStyle);
+                Cell c15 = row.createCell(col++);
+                c15.setCellValue(card.getOcrStatus() != null ? card.getOcrStatus().name() : "UNKNOWN");
+                c15.setCellStyle(card.getOcrStatus() == OcrStatus.COMPLETED ? completedStatusStyle : failedStatusStyle);
 
-                Cell c7 = row.createCell(7); c7.setCellValue(card.getUploaderEmail() != null ? card.getUploaderEmail() : "N/A"); c7.setCellStyle(dataRowStyle);
+                Cell c16 = row.createCell(col++); c16.setCellValue(card.getUploaderEmail() != null ? card.getUploaderEmail() : "N/A"); c16.setCellStyle(dataRowStyle);
             }
 
             for (int i = 0; i < summaryTableHeaders.length; i++) {
@@ -159,18 +171,27 @@ public class ExcelReportService {
             }
 
             // ==========================================
-            // SHEET 2: All Documents
+            // SHEET 2: All Documents (14 Standardized Fields + Full Meta)
             // ==========================================
             Sheet docSheet = workbook.createSheet("All Documents");
             docSheet.setDisplayGridlines(true);
 
             String[] columns = {
                     "Document ID",
-                    "Card Holder Name",
+                    "Name",
+                    "Job Title",
                     "Company Name",
-                    "Designation",
-                    "Mobile / Phone",
-                    "Email",
+                    "Department",
+                    "Email Address",
+                    "Mobile Number",
+                    "Work Number",
+                    "Website URL",
+                    "City",
+                    "State",
+                    "Postal/ZIP Code",
+                    "Country",
+                    "LinkedIn",
+                    "Twitter/X",
                     "Address",
                     "Status",
                     "Uploaded By",
@@ -190,80 +211,126 @@ public class ExcelReportService {
             for (VisitingCard card : documents) {
                 Row row = docSheet.createRow(docRowIdx++);
                 row.setHeightInPoints(20);
+                int col = 0;
 
                 // 0. Document ID
-                Cell c0 = row.createCell(0);
+                Cell c0 = row.createCell(col++);
                 c0.setCellValue(card.getRecordId() != null ? card.getRecordId() : String.valueOf(card.getId()));
                 c0.setCellStyle(dataRowStyle);
 
-                // 1. Card Holder Name
-                Cell c1 = row.createCell(1);
+                // 1. Name
+                Cell c1 = row.createCell(col++);
                 c1.setCellValue(card.getCardHolderName() != null ? card.getCardHolderName() : "N/A");
                 c1.setCellStyle(dataRowStyle);
 
-                // 2. Company Name
-                Cell c2 = row.createCell(2);
-                c2.setCellValue(card.getCompanyName() != null ? card.getCompanyName() : "N/A");
+                // 2. Job Title
+                Cell c2 = row.createCell(col++);
+                c2.setCellValue(card.getDesignation() != null ? card.getDesignation() : "N/A");
                 c2.setCellStyle(dataRowStyle);
 
-                // 3. Designation
-                Cell c3 = row.createCell(3);
-                c3.setCellValue(card.getDesignation() != null ? card.getDesignation() : "N/A");
+                // 3. Company Name
+                Cell c3 = row.createCell(col++);
+                c3.setCellValue(card.getCompanyName() != null ? card.getCompanyName() : "N/A");
                 c3.setCellStyle(dataRowStyle);
 
-                // 4. Mobile / Phone
-                Cell c4 = row.createCell(4);
-                c4.setCellValue(card.getExtractedMobile() != null ? card.getExtractedMobile() : "N/A");
+                // 4. Department
+                Cell c4 = row.createCell(col++);
+                c4.setCellValue(card.getDepartment() != null ? card.getDepartment() : "N/A");
                 c4.setCellStyle(dataRowStyle);
 
-                // 5. Email
-                Cell c5 = row.createCell(5);
+                // 5. Email Address
+                Cell c5 = row.createCell(col++);
                 c5.setCellValue(card.getExtractedEmail() != null ? card.getExtractedEmail() : "N/A");
                 c5.setCellStyle(dataRowStyle);
 
-                // 6. Address
-                Cell c6 = row.createCell(6);
-                c6.setCellValue(card.getExtractedAddress() != null ? card.getExtractedAddress() : "N/A");
+                // 6. Mobile Number
+                Cell c6 = row.createCell(col++);
+                c6.setCellValue(card.getExtractedMobile() != null ? card.getExtractedMobile() : "N/A");
                 c6.setCellStyle(dataRowStyle);
 
-                // 7. Status (COMPLETED in Green, FAILED in Red)
-                Cell c7 = row.createCell(7);
-                OcrStatus ocrStatus = card.getOcrStatus() != null ? card.getOcrStatus() : OcrStatus.PENDING;
-                c7.setCellValue(ocrStatus.name());
-                if (ocrStatus == OcrStatus.COMPLETED) {
-                    c7.setCellStyle(completedStatusStyle);
-                } else if (ocrStatus == OcrStatus.FAILED) {
-                    c7.setCellStyle(failedStatusStyle);
-                } else {
-                    c7.setCellStyle(dataRowStyle);
-                }
+                // 7. Work Number
+                Cell c7 = row.createCell(col++);
+                c7.setCellValue(card.getWorkNumber() != null ? card.getWorkNumber() : "N/A");
+                c7.setCellStyle(dataRowStyle);
 
-                // 8. Uploaded By
-                Cell c8 = row.createCell(8);
-                c8.setCellValue(card.getUploaderEmail() != null ? card.getUploaderEmail() : "N/A");
+                // 8. Website URL
+                Cell c8 = row.createCell(col++);
+                c8.setCellValue(card.getWebsiteUrl() != null ? card.getWebsiteUrl() : "N/A");
                 c8.setCellStyle(dataRowStyle);
 
-                // 9. S3 File URL (Clickable Hyperlink)
-                Cell c9 = row.createCell(9);
+                // 9. City
+                Cell c9 = row.createCell(col++);
+                c9.setCellValue(card.getCity() != null ? card.getCity() : "N/A");
+                c9.setCellStyle(dataRowStyle);
+
+                // 10. State
+                Cell c10 = row.createCell(col++);
+                c10.setCellValue(card.getState() != null ? card.getState() : "N/A");
+                c10.setCellStyle(dataRowStyle);
+
+                // 11. Postal/ZIP Code
+                Cell c11 = row.createCell(col++);
+                c11.setCellValue(card.getPostalZipCode() != null ? card.getPostalZipCode() : "N/A");
+                c11.setCellStyle(dataRowStyle);
+
+                // 12. Country
+                Cell c12 = row.createCell(col++);
+                c12.setCellValue(card.getCountry() != null ? card.getCountry() : "N/A");
+                c12.setCellStyle(dataRowStyle);
+
+                // 13. LinkedIn
+                Cell c13 = row.createCell(col++);
+                c13.setCellValue(card.getLinkedIn() != null ? card.getLinkedIn() : "N/A");
+                c13.setCellStyle(dataRowStyle);
+
+                // 14. Twitter/X
+                Cell c14 = row.createCell(col++);
+                c14.setCellValue(card.getTwitter() != null ? card.getTwitter() : "N/A");
+                c14.setCellStyle(dataRowStyle);
+
+                // 15. Address
+                Cell c15 = row.createCell(col++);
+                c15.setCellValue(card.getExtractedAddress() != null ? card.getExtractedAddress() : "N/A");
+                c15.setCellStyle(dataRowStyle);
+
+                // 16. Status (COMPLETED in Green, FAILED in Red)
+                Cell c16 = row.createCell(col++);
+                OcrStatus ocrStatus = card.getOcrStatus() != null ? card.getOcrStatus() : OcrStatus.PENDING;
+                c16.setCellValue(ocrStatus.name());
+                if (ocrStatus == OcrStatus.COMPLETED) {
+                    c16.setCellStyle(completedStatusStyle);
+                } else if (ocrStatus == OcrStatus.FAILED) {
+                    c16.setCellStyle(failedStatusStyle);
+                } else {
+                    c16.setCellStyle(dataRowStyle);
+                }
+
+                // 17. Uploaded By
+                Cell c17 = row.createCell(col++);
+                c17.setCellValue(card.getUploaderEmail() != null ? card.getUploaderEmail() : "N/A");
+                c17.setCellStyle(dataRowStyle);
+
+                // 18. S3 File URL (Clickable Hyperlink)
+                Cell c18 = row.createCell(col++);
                 String s3Url = card.getImageUrl() != null ? card.getImageUrl() : "";
-                c9.setCellValue(s3Url.isEmpty() ? "N/A" : "View Image");
+                c18.setCellValue(s3Url.isEmpty() ? "N/A" : "View Image");
                 if (!s3Url.isEmpty()) {
                     try {
                         Hyperlink link = createHelper.createHyperlink(HyperlinkType.URL);
                         link.setAddress(s3Url);
-                        c9.setHyperlink(link);
-                        c9.setCellStyle(hyperlinkStyle);
+                        c18.setHyperlink(link);
+                        c18.setCellStyle(hyperlinkStyle);
                     } catch (Exception e) {
-                        c9.setCellStyle(dataRowStyle);
+                        c18.setCellStyle(dataRowStyle);
                     }
                 } else {
-                    c9.setCellStyle(dataRowStyle);
+                    c18.setCellStyle(dataRowStyle);
                 }
 
-                // 10. Uploaded At
-                Cell c10 = row.createCell(10);
-                c10.setCellValue(card.getCreatedAt() != null ? card.getCreatedAt().format(DATE_TIME_FORMATTER) : "N/A");
-                c10.setCellStyle(dataRowStyle);
+                // 19. Uploaded At
+                Cell c19 = row.createCell(col++);
+                c19.setCellValue(card.getCreatedAt() != null ? card.getCreatedAt().format(DATE_TIME_FORMATTER) : "N/A");
+                c19.setCellStyle(dataRowStyle);
             }
 
             // Apply Auto-Filter to All Documents Sheet
@@ -279,28 +346,13 @@ public class ExcelReportService {
             }
 
             workbook.write(out);
-            log.info("Successfully generated Excel report (.xlsx) for {} documents (size: {} bytes)",
+            log.info("Successfully generated Excel report (.xlsx) for {} documents with 14 standardized fields (size: {} bytes)",
                     documents.size(), out.size());
             return out.toByteArray();
 
         } catch (IOException e) {
             log.error("Failed to generate Excel daily report: {}", e.getMessage(), e);
             throw new RuntimeException("Excel report generation error: " + e.getMessage(), e);
-        }
-    }
-
-    private String buildStructuredDataJson(VisitingCard card) {
-        try {
-            Map<String, String> data = new LinkedHashMap<>();
-            if (card.getCardHolderName() != null) data.put("name", card.getCardHolderName());
-            if (card.getCompanyName() != null) data.put("company", card.getCompanyName());
-            if (card.getDesignation() != null) data.put("designation", card.getDesignation());
-            if (card.getExtractedEmail() != null) data.put("email", card.getExtractedEmail());
-            if (card.getExtractedMobile() != null) data.put("mobile", card.getExtractedMobile());
-            if (card.getExtractedAddress() != null) data.put("address", card.getExtractedAddress());
-            return data.isEmpty() ? "{}" : objectMapper.writeValueAsString(data);
-        } catch (Exception e) {
-            return "{}";
         }
     }
 

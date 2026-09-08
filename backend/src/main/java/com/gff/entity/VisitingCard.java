@@ -9,15 +9,10 @@ import java.time.LocalDateTime;
 
 /**
  * Entity representing an uploaded Visiting Card record,
- * its storage metadata, lifecycle status, and OCR extracted fields.
+ * its storage metadata, lifecycle status, and 14 standardized OCR extracted fields.
  */
 @Entity
-@Table(name = "visiting_cards", indexes = {
-        @Index(name = "idx_record_id", columnList = "record_id", unique = true),
-        @Index(name = "idx_uploader_email", columnList = "uploader_email"),
-        @Index(name = "idx_status", columnList = "status"),
-        @Index(name = "idx_ocr_status", columnList = "ocr_status")
-})
+@Table(name = "visiting_cards")
 public class VisitingCard {
 
     @Id
@@ -74,26 +69,68 @@ public class VisitingCard {
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 
-    // --- OCR Fields ---
+    // --- 14 Standardized OCR Fields ---
     @Enumerated(EnumType.STRING)
     @Column(name = "ocr_status", nullable = false, length = 32)
     private OcrStatus ocrStatus = OcrStatus.PENDING;
 
+    // 1. Name
     @Column(name = "card_holder_name")
     private String cardHolderName;
 
-    @Column(name = "company_name")
-    private String companyName;
-
+    // 2. Job Title
     @Column(name = "designation")
     private String designation;
 
+    // 3. Company Name
+    @Column(name = "company_name")
+    private String companyName;
+
+    // 4. Department
+    @Column(name = "department", length = 128)
+    private String department;
+
+    // 5. Email Address
     @Column(name = "extracted_email")
     private String extractedEmail;
 
+    // 6. Mobile Number
     @Column(name = "extracted_mobile", length = 32)
     private String extractedMobile;
 
+    // 7. Work Number
+    @Column(name = "work_number", length = 32)
+    private String workNumber;
+
+    // 8. Website URL
+    @Column(name = "website_url", length = 256)
+    private String websiteUrl;
+
+    // 9. City
+    @Column(name = "city", length = 128)
+    private String city;
+
+    // 10. State
+    @Column(name = "state", length = 128)
+    private String state;
+
+    // 11. Postal/ZIP Code
+    @Column(name = "postal_zip_code", length = 32)
+    private String postalZipCode;
+
+    // 12. Country
+    @Column(name = "country", length = 128)
+    private String country;
+
+    // 13. LinkedIn
+    @Column(name = "linkedin", length = 256)
+    private String linkedIn;
+
+    // 14. Twitter / X
+    @Column(name = "twitter", length = 256)
+    private String twitter;
+
+    // Additional address & raw text
     @Column(name = "extracted_address", columnDefinition = "TEXT")
     private String extractedAddress;
 
@@ -139,10 +176,19 @@ public class VisitingCard {
         private String errorMessage;
         private OcrStatus ocrStatus = OcrStatus.PENDING;
         private String cardHolderName;
-        private String companyName;
         private String designation;
+        private String companyName;
+        private String department;
         private String extractedEmail;
         private String extractedMobile;
+        private String workNumber;
+        private String websiteUrl;
+        private String city;
+        private String state;
+        private String postalZipCode;
+        private String country;
+        private String linkedIn;
+        private String twitter;
         private String extractedAddress;
         private String rawOcrText;
         private LocalDateTime ocrProcessedAt;
@@ -166,10 +212,23 @@ public class VisitingCard {
         public VisitingCardBuilder errorMessage(String errorMessage) { this.errorMessage = errorMessage; return this; }
         public VisitingCardBuilder ocrStatus(OcrStatus ocrStatus) { this.ocrStatus = ocrStatus; return this; }
         public VisitingCardBuilder cardHolderName(String cardHolderName) { this.cardHolderName = cardHolderName; return this; }
-        public VisitingCardBuilder companyName(String companyName) { this.companyName = companyName; return this; }
+        public VisitingCardBuilder name(String name) { this.cardHolderName = name; return this; }
         public VisitingCardBuilder designation(String designation) { this.designation = designation; return this; }
+        public VisitingCardBuilder jobTitle(String jobTitle) { this.designation = jobTitle; return this; }
+        public VisitingCardBuilder companyName(String companyName) { this.companyName = companyName; return this; }
+        public VisitingCardBuilder department(String department) { this.department = department; return this; }
         public VisitingCardBuilder extractedEmail(String extractedEmail) { this.extractedEmail = extractedEmail; return this; }
+        public VisitingCardBuilder emailAddress(String emailAddress) { this.extractedEmail = emailAddress; return this; }
         public VisitingCardBuilder extractedMobile(String extractedMobile) { this.extractedMobile = extractedMobile; return this; }
+        public VisitingCardBuilder mobileNumber(String mobileNumber) { this.extractedMobile = mobileNumber; return this; }
+        public VisitingCardBuilder workNumber(String workNumber) { this.workNumber = workNumber; return this; }
+        public VisitingCardBuilder websiteUrl(String websiteUrl) { this.websiteUrl = websiteUrl; return this; }
+        public VisitingCardBuilder city(String city) { this.city = city; return this; }
+        public VisitingCardBuilder state(String state) { this.state = state; return this; }
+        public VisitingCardBuilder postalZipCode(String postalZipCode) { this.postalZipCode = postalZipCode; return this; }
+        public VisitingCardBuilder country(String country) { this.country = country; return this; }
+        public VisitingCardBuilder linkedIn(String linkedIn) { this.linkedIn = linkedIn; return this; }
+        public VisitingCardBuilder twitter(String twitter) { this.twitter = twitter; return this; }
         public VisitingCardBuilder extractedAddress(String extractedAddress) { this.extractedAddress = extractedAddress; return this; }
         public VisitingCardBuilder rawOcrText(String rawOcrText) { this.rawOcrText = rawOcrText; return this; }
         public VisitingCardBuilder ocrProcessedAt(LocalDateTime ocrProcessedAt) { this.ocrProcessedAt = ocrProcessedAt; return this; }
@@ -195,10 +254,19 @@ public class VisitingCard {
             card.errorMessage = this.errorMessage;
             card.ocrStatus = this.ocrStatus;
             card.cardHolderName = this.cardHolderName;
-            card.companyName = this.companyName;
             card.designation = this.designation;
+            card.companyName = this.companyName;
+            card.department = this.department;
             card.extractedEmail = this.extractedEmail;
             card.extractedMobile = this.extractedMobile;
+            card.workNumber = this.workNumber;
+            card.websiteUrl = this.websiteUrl;
+            card.city = this.city;
+            card.state = this.state;
+            card.postalZipCode = this.postalZipCode;
+            card.country = this.country;
+            card.linkedIn = this.linkedIn;
+            card.twitter = this.twitter;
             card.extractedAddress = this.extractedAddress;
             card.rawOcrText = this.rawOcrText;
             card.ocrProcessedAt = this.ocrProcessedAt;
@@ -275,21 +343,71 @@ public class VisitingCard {
     public OcrStatus getOcrStatus() { return ocrStatus; }
     public void setOcrStatus(OcrStatus ocrStatus) { this.ocrStatus = ocrStatus; }
 
+    // 1. Name / CardHolderName
     public String getCardHolderName() { return cardHolderName; }
     public void setCardHolderName(String cardHolderName) { this.cardHolderName = cardHolderName; }
+    public String getName() { return cardHolderName; }
+    public void setName(String name) { this.cardHolderName = name; }
 
+    // 2. Job Title / Designation
+    public String getDesignation() { return designation; }
+    public void setDesignation(String designation) { this.designation = designation; }
+    public String getJobTitle() { return designation; }
+    public void setJobTitle(String jobTitle) { this.designation = jobTitle; }
+
+    // 3. Company Name
     public String getCompanyName() { return companyName; }
     public void setCompanyName(String companyName) { this.companyName = companyName; }
 
-    public String getDesignation() { return designation; }
-    public void setDesignation(String designation) { this.designation = designation; }
+    // 4. Department
+    public String getDepartment() { return department; }
+    public void setDepartment(String department) { this.department = department; }
 
+    // 5. Email Address / ExtractedEmail
     public String getExtractedEmail() { return extractedEmail; }
     public void setExtractedEmail(String extractedEmail) { this.extractedEmail = extractedEmail; }
+    public String getEmailAddress() { return extractedEmail; }
+    public void setEmailAddress(String emailAddress) { this.extractedEmail = emailAddress; }
 
+    // 6. Mobile Number / ExtractedMobile
     public String getExtractedMobile() { return extractedMobile; }
     public void setExtractedMobile(String extractedMobile) { this.extractedMobile = extractedMobile; }
+    public String getMobileNumber() { return extractedMobile; }
+    public void setMobileNumber(String mobileNumber) { this.extractedMobile = mobileNumber; }
 
+    // 7. Work Number
+    public String getWorkNumber() { return workNumber; }
+    public void setWorkNumber(String workNumber) { this.workNumber = workNumber; }
+
+    // 8. Website URL
+    public String getWebsiteUrl() { return websiteUrl; }
+    public void setWebsiteUrl(String websiteUrl) { this.websiteUrl = websiteUrl; }
+
+    // 9. City
+    public String getCity() { return city; }
+    public void setCity(String city) { this.city = city; }
+
+    // 10. State
+    public String getState() { return state; }
+    public void setState(String state) { this.state = state; }
+
+    // 11. Postal / ZIP Code
+    public String getPostalZipCode() { return postalZipCode; }
+    public void setPostalZipCode(String postalZipCode) { this.postalZipCode = postalZipCode; }
+
+    // 12. Country
+    public String getCountry() { return country; }
+    public void setCountry(String country) { this.country = country; }
+
+    // 13. LinkedIn
+    public String getLinkedIn() { return linkedIn; }
+    public void setLinkedIn(String linkedIn) { this.linkedIn = linkedIn; }
+
+    // 14. Twitter / X
+    public String getTwitter() { return twitter; }
+    public void setTwitter(String twitter) { this.twitter = twitter; }
+
+    // Address & Raw OCR
     public String getExtractedAddress() { return extractedAddress; }
     public void setExtractedAddress(String extractedAddress) { this.extractedAddress = extractedAddress; }
 

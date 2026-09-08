@@ -9,7 +9,8 @@ import com.gff.entity.enums.UserRole;
 import com.gff.exception.ApiException;
 import com.gff.repository.UserRepository;
 import com.gff.security.LoginRateLimiter;
-import jakarta.annotation.PostConstruct;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 public class AuthService {
@@ -44,20 +46,34 @@ public class AuthService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    @PostConstruct
-    @Transactional
-    public void seedInitialUsers() {
-        try {
-            jdbcTemplate.execute("ALTER TABLE app_users DROP CONSTRAINT IF EXISTS app_users_role_check");
-            jdbcTemplate.execute("ALTER TABLE visiting_cards DROP CONSTRAINT IF EXISTS visiting_cards_uploader_role_check");
-        } catch (Exception e) {
-            log.warn("Notice updating role constraint: {}", e.getMessage());
-        }
+    @EventListener(ApplicationReadyEvent.class)
+    public void seedInitialUsersAsync() {
+        CompletableFuture.runAsync(() -> {
+            try {
+                log.info("Starting background DB schema migration & initial user seeding...");
+                jdbcTemplate.execute("ALTER TABLE app_users DROP CONSTRAINT IF EXISTS app_users_role_check");
+                jdbcTemplate.execute("ALTER TABLE visiting_cards DROP CONSTRAINT IF EXISTS visiting_cards_uploader_role_check");
+                // Auto-migrate schema with all 14 standardized fields if missing
+                jdbcTemplate.execute("ALTER TABLE visiting_cards ADD COLUMN IF NOT EXISTS department VARCHAR(128)");
+                jdbcTemplate.execute("ALTER TABLE visiting_cards ADD COLUMN IF NOT EXISTS work_number VARCHAR(32)");
+                jdbcTemplate.execute("ALTER TABLE visiting_cards ADD COLUMN IF NOT EXISTS website_url VARCHAR(256)");
+                jdbcTemplate.execute("ALTER TABLE visiting_cards ADD COLUMN IF NOT EXISTS city VARCHAR(128)");
+                jdbcTemplate.execute("ALTER TABLE visiting_cards ADD COLUMN IF NOT EXISTS state VARCHAR(128)");
+                jdbcTemplate.execute("ALTER TABLE visiting_cards ADD COLUMN IF NOT EXISTS postal_zip_code VARCHAR(32)");
+                jdbcTemplate.execute("ALTER TABLE visiting_cards ADD COLUMN IF NOT EXISTS country VARCHAR(128)");
+                jdbcTemplate.execute("ALTER TABLE visiting_cards ADD COLUMN IF NOT EXISTS linkedin VARCHAR(256)");
+                jdbcTemplate.execute("ALTER TABLE visiting_cards ADD COLUMN IF NOT EXISTS twitter VARCHAR(256)");
+                log.info("Visiting cards table schema verified.");
+            } catch (Exception e) {
+                log.warn("Notice updating schema/role constraint: {}", e.getMessage());
+            }
 
-        // Seed initial default users if they don't already exist
-        seedOrMigrateUser("admin@demo.com", "Admin@123", "Admin User", "9900112233", UserRole.ADMIN);
-        seedOrMigrateUser("user1@demo.com", "Demo@123", "Rahul Sharma", "9876543210", UserRole.FIELD_USER);
-        seedOrMigrateUser("user2@demo.com", "Demo@123", "Priya Verma", "9812345678", UserRole.FIELD_USER);
+            // Seed initial default users if they don't already exist
+            seedOrMigrateUser("admin@demo.com", "Admin@123", "Admin User", "9900112233", UserRole.ADMIN);
+            seedOrMigrateUser("user1@demo.com", "Demo@123", "Rahul Sharma", "9876543210", UserRole.FIELD_USER);
+            seedOrMigrateUser("user2@demo.com", "Demo@123", "Priya Verma", "9812345678", UserRole.FIELD_USER);
+            log.info("Background DB schema check & user seeding completed.");
+        });
     }
 
     private void seedOrMigrateUser(String email, String plainPassword, String name, String mobile, UserRole role) {
@@ -126,7 +142,7 @@ public class AuthService {
         log.info("User successfully authenticated: {} [{}]", user.getEmail(), user.getRole());
 
         // 5. Generate signed JWT token
-        String token = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole().name(), user.getName());
+        String token = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getName(), user.getRole().name());
 
         return AuthResponse.builder()
                 .token(token)
