@@ -11,10 +11,6 @@ import {
   AlertCircle,
   Eye,
   EyeOff,
-  Sparkles,
-  ShieldCheck,
-  Zap,
-  CheckCircle2,
 } from "lucide-react";
 
 interface LoginFormProps {
@@ -71,55 +67,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
         <div className="absolute inset-0 tech-grid-pattern opacity-60 [mask-image:radial-gradient(ellipse_at_center,black_45%,transparent_75%)]" />
       </div>
 
-      {/* Floating Desktop Feature Badges */}
-      <div className="hidden xl:flex absolute top-1/2 left-8 lg:left-12 -translate-y-1/2 flex-col gap-4 pointer-events-none z-10 animate-float-slow">
-        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/70 backdrop-blur-md border border-white/80 shadow-lg shadow-indigo-500/5">
-          <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100/80 flex items-center justify-center text-indigo-600">
-            <Zap className="w-5 h-5 animate-pulse" />
-          </div>
-          <div>
-            <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-              <span>Neural OCR Engine</span>
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-100 text-emerald-700">
-                v2.4
-              </span>
-            </div>
-            <div className="text-[11px] text-slate-500">99.8% Field Extraction</div>
-          </div>
-        </div>
 
-        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/70 backdrop-blur-md border border-white/80 shadow-lg shadow-indigo-500/5">
-          <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100/80 flex items-center justify-center text-emerald-600">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xs font-bold text-slate-800">Two-Sided Stitching</div>
-            <div className="text-[11px] text-slate-500">Auto Front & Back Merge</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="hidden xl:flex absolute top-1/2 right-8 lg:right-12 -translate-y-1/2 flex-col gap-4 pointer-events-none z-10 animate-float-reverse">
-        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/70 backdrop-blur-md border border-white/80 shadow-lg shadow-indigo-500/5">
-          <div className="w-9 h-9 rounded-xl bg-violet-50 border border-violet-100/80 flex items-center justify-center text-violet-600">
-            <ShieldCheck className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xs font-bold text-slate-800">256-bit SSL Vault</div>
-            <div className="text-[11px] text-slate-500">Bank-grade Data Security</div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/70 backdrop-blur-md border border-white/80 shadow-lg shadow-indigo-500/5">
-          <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100/80 flex items-center justify-center text-blue-600">
-            <Sparkles className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xs font-bold text-slate-800">GFF 2026 Ready</div>
-            <div className="text-[11px] text-slate-500">High-concurrency Ready</div>
-          </div>
-        </div>
-      </div>
 
       {/* Top Brand Header */}
       <header className="relative z-10 w-full max-w-sm sm:max-w-md mx-auto pt-2 sm:pt-4 text-center shrink-0">
@@ -273,18 +221,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
         </div>
       </main>
 
-      {/* Clean Minimal Footer */}
-      <footer className="relative z-10 text-center py-2 sm:py-3 text-[11px] text-slate-400 shrink-0">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100/70 border border-slate-200/60">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-          </span>
-          <span className="font-medium text-slate-600">OCR Engine v2.4 Active</span>
-          <span className="text-slate-300">•</span>
-          <span className="text-slate-500">Enterprise Field Operations</span>
-        </div>
-      </footer>
+      {/* Footer */}
+      <footer className="relative z-10 text-center py-2 sm:py-3 text-[11px] text-slate-400 shrink-0" />
     </div>
   );
 };

@@ -431,16 +431,16 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
               onClick={handleTriggerDailyReport}
               disabled={isTriggeringReport}
               title="Process pending OCR and email daily Excel report to team leads"
-              className="flex items-center gap-2 py-2 px-3.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs shadow-sm backdrop-blur-sm transition-all active:scale-95 disabled:opacity-60 cursor-pointer border border-white/20"
+              className="inline-flex items-center justify-center gap-2 py-2 px-3.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs shadow-sm backdrop-blur-sm transition-all active:scale-95 disabled:opacity-60 cursor-pointer border border-white/20 whitespace-nowrap shrink-0"
             >
               {isTriggeringReport ? (
                 <>
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-white shrink-0" />
                   <span>Sending Report...</span>
                 </>
               ) : (
                 <>
-                  <Send className="w-3.5 h-3.5" />
+                  <Send className="w-3.5 h-3.5 shrink-0" />
                   <span>Trigger Email Report</span>
                 </>
               )}

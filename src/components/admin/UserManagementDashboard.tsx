@@ -15,14 +15,11 @@ import {
   Shield,
   Edit2,
   Power,
-  RefreshCw,
   Mail,
   Phone,
   Clock,
   CheckCircle2,
   AlertCircle,
-  Send,
-  FileSpreadsheet,
 } from "lucide-react";
 
 interface UserManagementDashboardProps {
@@ -41,7 +38,6 @@ const ALL_ROLES: UserRole[] = [
 export const UserManagementDashboard: React.FC<UserManagementDashboardProps> = ({ onNotify }) => {
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isTriggeringReport, setIsTriggeringReport] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedRole, setSelectedRole] = useState<"All" | UserRole>("All");
@@ -65,26 +61,6 @@ export const UserManagementDashboard: React.FC<UserManagementDashboardProps> = (
   }, [searchQuery]);
 
   const isFetchingRef = useRef(false);
-
-  const handleTriggerDailyReport = async () => {
-    setIsTriggeringReport(true);
-    try {
-      const res = await apiService.triggerDailyReportEmail();
-      notifyRef.current?.(
-        "success",
-        "Daily Report Email Dispatched",
-        res.message || "Processed pending cards & sent daily Excel report to team leads."
-      );
-    } catch (err: any) {
-      notifyRef.current?.(
-        "error",
-        "Email Report Failed",
-        err.message || "Failed to trigger daily OCR report email."
-      );
-    } finally {
-      setIsTriggeringReport(false);
-    }
-  };
 
   const fetchUsers = useCallback(async () => {
     if (isFetchingRef.current) return;
@@ -167,58 +143,31 @@ export const UserManagementDashboard: React.FC<UserManagementDashboardProps> = (
   return (
     <div className="space-y-6 animate-in fade-in">
       {/* Top Banner & Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl shadow-lg border border-slate-800">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300 shadow-inner">
-            <Users className="w-6 h-6" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-4 sm:p-6 rounded-3xl shadow-lg border border-slate-800">
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300 shadow-inner shrink-0">
+            <Users className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg sm:text-xl font-extrabold tracking-tight">Admin User Management</h1>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/20">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-base sm:text-xl font-extrabold tracking-tight">Admin User Management</h1>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/20 whitespace-nowrap">
                 Server-side RBAC
               </span>
             </div>
-            <p className="text-xs text-slate-300 mt-0.5">
+            <p className="text-xs text-slate-300 mt-0.5 leading-relaxed">
               Create credentials, assign roles, and manage system access permissions
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <button
-            type="button"
-            onClick={handleTriggerDailyReport}
-            disabled={isTriggeringReport}
-            title="Process pending OCR and email daily Excel report to team leads"
-            className="flex items-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-md shadow-emerald-600/25 transition-all active:scale-95 disabled:opacity-60 cursor-pointer"
-          >
-            {isTriggeringReport ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                <span>Sending Report...</span>
-              </>
-            ) : (
-              <>
-                <Send className="w-4 h-4" />
-                <span>Trigger Email Report</span>
-              </>
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => fetchUsers()}
-            title="Refresh user list"
-            className="p-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 hover:text-white transition-colors flex items-center justify-center"
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin text-indigo-300" : ""}`} />
-          </button>
+        <div>
           <button
             type="button"
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 py-2.5 px-4.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-xs shadow-md shadow-indigo-500/25 transition-all active:scale-95"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-xs shadow-md shadow-indigo-500/25 transition-all active:scale-95 whitespace-nowrap cursor-pointer"
           >
-            <UserPlus className="w-4 h-4" />
+            <UserPlus className="w-4 h-4 shrink-0" />
             <span>Create New User</span>
           </button>
         </div>
