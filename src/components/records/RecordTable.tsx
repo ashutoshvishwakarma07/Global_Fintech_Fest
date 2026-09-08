@@ -2,7 +2,7 @@
 
 import React from "react";
 import { UploadRecord } from "@/types";
-import { ExternalLink, Shield, CheckCircle2, FileText, Mail } from "lucide-react";
+import { ExternalLink, Shield, CheckCircle2, FileText } from "lucide-react";
 import { getDisplayImageUrl } from "@/utils/imageUrl";
 
 interface RecordTableProps {
@@ -157,21 +157,6 @@ export const RecordTable: React.FC<RecordTableProps> = ({ records, onSelect, onS
                         <span>View</span>
                         <ExternalLink className="w-3.5 h-3.5" />
                       </button>
-
-                      {onShare && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onShare(record);
-                          }}
-                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1.5 rounded-lg transition-colors"
-                          title="Share visiting card with lead via email"
-                        >
-                          <Mail className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Share with Lead</span>
-                        </button>
-                      )}
                     </div>
                   </td>
                 </tr>

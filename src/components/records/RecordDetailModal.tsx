@@ -420,16 +420,6 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({ record, on
           >
             Close / Back
           </button>
-          {onShare && (
-            <button
-              type="button"
-              onClick={() => onShare(record)}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold shadow-md shadow-emerald-200 active:scale-[0.98] transition-all"
-            >
-              <Mail className="w-4 h-4" />
-              <span>Share with Lead</span>
-            </button>
-          )}
         </div>
       </div>
     </div>
