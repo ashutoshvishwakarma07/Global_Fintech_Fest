@@ -255,15 +255,49 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
   // Helper to extract YYYY-MM-DD from record.uploadedAt
   const getRecordDateString = (uploadedAt: string): string => {
     if (!uploadedAt) return "";
-    const match = uploadedAt.match(/^(\d{4}-\d{2}-\d{2})/);
-    if (match) return match[1];
-    const d = new Date(uploadedAt);
-    if (!isNaN(d.getTime())) {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      return `${year}-${month}-${day}`;
+    const trimmed = uploadedAt.trim();
+
+    // 1. Check YYYY-MM-DD (e.g. "2026-09-08", "2026-09-08 04:28", "2026-09-08T04:28:00")
+    const isoMatch = trimmed.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+    if (isoMatch) {
+      const y = isoMatch[1];
+      const m = isoMatch[2].padStart(2, "0");
+      const d = isoMatch[3].padStart(2, "0");
+      return `${y}-${m}-${d}`;
     }
+
+    // 2. Check DD-MM-YYYY or DD/MM/YYYY (e.g. "08-09-2026", "08/09/2026")
+    const dmyMatch = trimmed.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
+    if (dmyMatch) {
+      const d = dmyMatch[1].padStart(2, "0");
+      const m = dmyMatch[2].padStart(2, "0");
+      const y = dmyMatch[3];
+      return `${y}-${m}-${d}`;
+    }
+
+    // 3. Check DD Mon YYYY (e.g. "08 Sep 2026, 04:28 PM", "8 September 2026")
+    const dMonYMatch = trimmed.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
+    if (dMonYMatch) {
+      const d = dMonYMatch[1].padStart(2, "0");
+      const monthName = dMonYMatch[2].substring(0, 3).toLowerCase();
+      const months: Record<string, string> = {
+        jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
+        jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12"
+      };
+      const m = months[monthName];
+      const y = dMonYMatch[3];
+      if (m) return `${y}-${m}-${d}`;
+    }
+
+    // 4. Try JS Date constructor fallback
+    const parsed = new Date(trimmed);
+    if (!isNaN(parsed.getTime())) {
+      const y = parsed.getFullYear();
+      const m = String(parsed.getMonth() + 1).padStart(2, "0");
+      const d = String(parsed.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+
     return "";
   };
 
@@ -338,14 +372,14 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
           const recDate = getRecordDateString(record.uploadedAt);
           if (recDate) {
             if (startDate && endDate) {
-              if (recDate < startDate || recDate > endDate) return false;
+              const minDate = startDate <= endDate ? startDate : endDate;
+              const maxDate = startDate <= endDate ? endDate : startDate;
+              if (recDate < minDate || recDate > maxDate) return false;
             } else if (startDate && !endDate) {
-              if (recDate !== startDate) return false;
+              if (recDate < startDate) return false;
             } else if (!startDate && endDate) {
               if (recDate > endDate) return false;
             }
-          } else {
-            return false;
           }
         }
 
