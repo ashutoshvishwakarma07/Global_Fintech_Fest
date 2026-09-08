@@ -57,7 +57,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
 
 
   return (
-    <div className="relative w-full h-[100dvh] max-h-[100dvh] overflow-y-auto md:overflow-hidden flex flex-col justify-between bg-gradient-to-b from-slate-50 via-indigo-50/25 to-slate-100/50 p-3 sm:p-5 md:p-6 select-none">
+    <div className="relative w-full min-h-[100dvh] overflow-y-auto flex flex-col items-center justify-center bg-gradient-to-b from-slate-50 via-indigo-50/25 to-slate-100/50 p-4 sm:p-6 select-none">
       {/* Background Animated Gradient Blobs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
         <div className="absolute -top-24 -left-24 w-80 sm:w-96 h-80 sm:h-96 bg-gradient-to-br from-indigo-400/20 to-purple-400/15 rounded-full blur-3xl animate-blob-1" />
@@ -67,31 +67,31 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
         <div className="absolute inset-0 tech-grid-pattern opacity-60 [mask-image:radial-gradient(ellipse_at_center,black_45%,transparent_75%)]" />
       </div>
 
-
-
-      {/* Top Brand Header */}
-      <header className="relative z-10 w-full max-w-sm sm:max-w-md mx-auto pt-2 sm:pt-4 text-center shrink-0">
-        <div className="inline-flex relative group mb-2.5">
-          <div className="absolute -inset-1.5 bg-gradient-to-r from-indigo-500 to-violet-600 rounded-2xl blur opacity-35 group-hover:opacity-60 transition duration-300 animate-pulse-glow" />
-          <div className="relative inline-flex items-center justify-center w-12 h-12 sm:w-13 sm:h-13 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-700 to-violet-700 text-white shadow-md shadow-indigo-500/25 ring-2 ring-white/80 animate-float-slow">
-            <Shield className="w-6 h-6 sm:w-6.5 sm:h-6.5" />
+      {/* Unified Centered Container for Logo Header + Login Card */}
+      <div className="relative z-10 w-full max-w-sm sm:max-w-[420px] mx-auto my-auto flex flex-col items-center py-2 sm:py-4">
+        {/* Brand Header */}
+        <header className="w-full text-center mb-3.5 sm:mb-4.5 shrink-0">
+          <div className="inline-flex relative group mb-2">
+            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-violet-600 rounded-2xl blur opacity-35 group-hover:opacity-60 transition duration-300 animate-pulse-glow" />
+            <div className="relative inline-flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-700 to-violet-700 text-white shadow-md shadow-indigo-500/25 ring-2 ring-white/80 animate-float-slow">
+              <Shield className="w-5 h-5 sm:w-6 sm:h-6" />
+            </div>
           </div>
-        </div>
 
-        <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 leading-tight">
-          FieldCapture <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">Portal</span>
-        </h1>
-        <div className="inline-flex items-center gap-2 mt-1 px-3 py-1 rounded-full bg-indigo-50/80 border border-indigo-100/80 text-[11px] font-medium text-indigo-700">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span>Online Document Verification & OCR Extraction</span>
-        </div>
-      </header>
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 leading-tight">
+            FieldCapture <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">Portal</span>
+          </h1>
+          <div className="inline-flex items-center gap-1.5 mt-1 px-2.5 py-0.5 rounded-full bg-indigo-50/80 border border-indigo-100/80 text-[11px] font-medium text-indigo-700">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Online Document Verification & OCR Extraction</span>
+          </div>
+        </header>
 
-      {/* Main Login Card */}
-      <main className="relative z-10 w-full max-w-sm sm:max-w-[420px] mx-auto my-auto py-2 sm:py-3 shrink-0">
-        <div className="relative rounded-3xl bg-white/90 backdrop-blur-xl border border-white/90 p-5 sm:p-7 shadow-[0_20px_50px_-15px_rgba(79,70,229,0.12),0_10px_25px_-10px_rgba(15,23,42,0.06)] transition-all">
-          {/* Top Gradient Accent Bar */}
-          <div className="absolute top-0 left-6 right-6 h-[3px] bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-400 rounded-full" />
+        {/* Main Login Card */}
+        <main className="w-full">
+          <div className="relative rounded-3xl bg-white/90 backdrop-blur-xl border border-white/90 p-5 sm:p-7 shadow-[0_20px_50px_-15px_rgba(79,70,229,0.12),0_10px_25px_-10px_rgba(15,23,42,0.06)] transition-all">
+            {/* Top Gradient Accent Bar */}
+            <div className="absolute top-0 left-6 right-6 h-[3px] bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-400 rounded-full" />
 
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -220,10 +220,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
           </form>
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className="relative z-10 text-center py-2 sm:py-3 text-[11px] text-slate-400 shrink-0" />
     </div>
-  );
+  </div>
+);
 };
 

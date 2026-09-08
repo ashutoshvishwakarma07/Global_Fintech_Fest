@@ -408,24 +408,31 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
     <div className="w-full max-w-6xl mx-auto pb-24 md:pb-12 animate-in fade-in duration-300">
       {/* Top Admin Notice if logged in as Admin */}
       {isAdmin && (
-        <div className="mb-5 bg-gradient-to-r from-purple-700 via-indigo-700 to-indigo-800 text-white rounded-2xl p-4 sm:p-5 shadow-lg shadow-indigo-200/50 flex items-center justify-between gap-3 animate-in slide-in-from-top-2">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
+        <div className="mb-5 bg-gradient-to-r from-purple-700 via-indigo-700 to-indigo-800 text-white rounded-2xl p-4 sm:p-5 shadow-lg shadow-indigo-200/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4 animate-in slide-in-from-top-2">
+          <div className="flex items-start sm:items-center gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
               <Shield className="w-5 h-5 text-white" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-sm sm:text-base">Admin Master Console</span>
-                <span className="bg-purple-900/60 px-2 py-0.5 rounded text-[10px] font-semibold">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-bold text-sm sm:text-base text-white tracking-tight">
+                  Admin Master Console
+                </span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/15 backdrop-blur-sm text-purple-100 border border-white/10 whitespace-nowrap">
                   All Records Access
                 </span>
               </div>
-              <p className="text-xs text-purple-100 mt-0.5">
+              <p className="text-xs text-purple-100/90 mt-1 leading-relaxed">
                 Viewing all uploaded records and extracted OCR data across all field users.
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2.5 flex-wrap">
+
+          <div className="flex items-center justify-between sm:justify-end gap-2.5 pt-2.5 sm:pt-0 border-t border-white/10 sm:border-t-0 shrink-0">
+            <span className="inline-flex items-center px-2.5 py-1 bg-white/10 rounded-lg text-xs font-semibold text-purple-100">
+              <span className="text-purple-200 mr-1.5 font-normal">Records:</span>
+              {records.length} Total
+            </span>
             <button
               type="button"
               onClick={handleTriggerDailyReport}
@@ -445,9 +452,6 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
                 </>
               )}
             </button>
-            <span className="hidden sm:inline-flex items-center px-3 py-1 bg-white/10 rounded-full text-xs font-semibold text-purple-100">
-              {records.length} Total Records
-            </span>
           </div>
         </div>
       )}
