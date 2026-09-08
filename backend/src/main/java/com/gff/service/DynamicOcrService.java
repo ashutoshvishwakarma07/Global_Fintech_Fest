@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.textract.TextractClient;
@@ -79,7 +80,7 @@ public class DynamicOcrService {
         }
 
         // 2. Try AWS Textract if S3 key is present
-        if (card.getS3Key() != null && !card.getS3Key().trim().isEmpty() && hasAwsCredentials()) {
+        if (card.getS3Key() != null && !card.getS3Key().trim().isEmpty()) {
             try {
                 boolean extracted = extractWithAwsTextract(card);
                 if (extracted) {
@@ -136,16 +137,50 @@ public class DynamicOcrService {
         return false;
     }
 
+    public boolean hasValidCredentials() {
+        return accessKey != null && !accessKey.trim().isEmpty() &&
+               secretKey != null && !secretKey.trim().isEmpty();
+    }
+
+    private TextractClient buildTextractClient() {
+        try {
+            if (hasValidCredentials()) {
+                return TextractClient.builder()
+                        .region(Region.of(region))
+                        .credentialsProvider(StaticCredentialsProvider.create(
+                                AwsBasicCredentials.create(accessKey.trim(), secretKey.trim())
+                        ))
+                        .build();
+            } else {
+                try {
+                    DefaultCredentialsProvider provider = DefaultCredentialsProvider.create();
+                    provider.resolveCredentials();
+                    return TextractClient.builder()
+                            .region(Region.of(region))
+                            .credentialsProvider(provider)
+                            .build();
+                } catch (Exception ex) {
+                    log.debug("DefaultCredentialsProvider not available for Textract: {}", ex.getMessage());
+                    return null;
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to build TextractClient: {}", e.getMessage());
+            return null;
+        }
+    }
+
     private boolean extractWithAwsTextract(VisitingCard card) {
         String bucket = card.getS3Bucket() != null ? card.getS3Bucket() : "visiting-card-bkt";
         String key = card.getS3Key();
 
-        TextractClient textractClient = TextractClient.builder()
-                .region(Region.of(region))
-                .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey)))
-                .build();
+        TextractClient textractClient = buildTextractClient();
+        if (textractClient == null) {
+            log.debug("Textract client not available for dynamic extraction on card {}", card.getRecordId());
+            return false;
+        }
 
-        try {
+        try (textractClient) {
             DetectDocumentTextRequest textractRequest = DetectDocumentTextRequest.builder()
                     .document(Document.builder()
                             .s3Object(S3Object.builder()
@@ -172,8 +207,9 @@ public class DynamicOcrService {
             parseTextDynamically(card, fullText);
             return card.getCardHolderName() != null && !card.getCardHolderName().trim().isEmpty();
 
-        } finally {
-            textractClient.close();
+        } catch (Exception e) {
+            log.warn("AWS Textract execution error on card {}: {}", card.getRecordId(), e.getMessage());
+            return false;
         }
     }
 
@@ -232,10 +268,5 @@ public class DynamicOcrService {
         if (line.toLowerCase().contains("phone") || line.toLowerCase().contains("email") || line.toLowerCase().contains("address")) return false;
         String[] words = line.split("\\s+");
         return words.length >= 1 && words.length <= 4;
-    }
-
-    private boolean hasAwsCredentials() {
-        return accessKey != null && !accessKey.trim().isEmpty() &&
-               secretKey != null && !secretKey.trim().isEmpty();
     }
 }

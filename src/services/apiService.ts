@@ -266,33 +266,38 @@ export const apiService = {
         }),
       });
 
-      if (response.ok) {
-        const resJson = await response.json();
-        if (resJson.data?.imageUrl) {
-          let resolved = resJson.data.imageUrl;
-          if (resolved.startsWith("/api/v1")) {
-            const origin = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
-            resolved = `${origin}${resolved}`;
-          } else if (resolved.startsWith("/")) {
-            resolved = `${API_BASE_URL}${resolved}`;
-          }
-          s3Url = resolved;
-          serverUrl = resolved;
-        }
-        if (resJson.data) {
-          const d = resJson.data;
-          if (d.cardHolderName) extractedData.cardHolderName = d.cardHolderName;
-          if (d.companyName) extractedData.companyName = d.companyName;
-          if (d.designation) extractedData.designation = d.designation;
-          if (d.extractedEmail) extractedData.extractedEmail = d.extractedEmail;
-          if (d.extractedMobile) extractedData.extractedMobile = d.extractedMobile;
-          if (d.extractedAddress) extractedData.extractedAddress = d.extractedAddress;
-          if (d.rawOcrText) extractedData.rawText = d.rawOcrText;
-        }
-        console.log("[apiService] Uploaded to Spring Boot & PostgreSQL successfully:", resJson);
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => null);
+        const errMsg = errJson?.message || errJson?.error || `Backend upload failed with HTTP ${response.status}`;
+        throw new Error(errMsg);
       }
-    } catch (backendErr) {
-      console.warn("[apiService] Backend upload notice:", backendErr);
+
+      const resJson = await response.json();
+      if (resJson.data?.imageUrl) {
+        let resolved = resJson.data.imageUrl;
+        if (resolved.startsWith("/api/v1")) {
+          const origin = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
+          resolved = `${origin}${resolved}`;
+        } else if (resolved.startsWith("/")) {
+          resolved = `${API_BASE_URL}${resolved}`;
+        }
+        s3Url = resolved;
+        serverUrl = resolved;
+      }
+      if (resJson.data) {
+        const d = resJson.data;
+        if (d.cardHolderName) extractedData.cardHolderName = d.cardHolderName;
+        if (d.companyName) extractedData.companyName = d.companyName;
+        if (d.designation) extractedData.designation = d.designation;
+        if (d.extractedEmail) extractedData.extractedEmail = d.extractedEmail;
+        if (d.extractedMobile) extractedData.extractedMobile = d.extractedMobile;
+        if (d.extractedAddress) extractedData.extractedAddress = d.extractedAddress;
+        if (d.rawOcrText) extractedData.rawText = d.rawOcrText;
+      }
+      console.log("[apiService] Uploaded to Spring Boot & AWS S3 successfully:", resJson);
+    } catch (backendErr: any) {
+      console.error("[apiService] Backend S3 upload failure:", backendErr);
+      throw backendErr;
     }
 
     if (!serverUrl && typeof URL !== "undefined" && payload.imageBlob) {
