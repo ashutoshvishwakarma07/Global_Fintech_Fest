@@ -61,12 +61,20 @@ public class S3Service {
                 .build();
     }
 
+    public String getBucketName() {
+        return bucketName;
+    }
+
+    public String getRegion() {
+        return region;
+    }
+
     public boolean hasValidCredentials() {
         return accessKey != null && !accessKey.trim().isEmpty()
                 && secretKey != null && !secretKey.trim().isEmpty();
     }
 
-    private S3Client buildS3Client() {
+    public S3Client buildS3Client() {
         try {
             if (hasValidCredentials()) {
                 return S3Client.builder()
@@ -84,10 +92,12 @@ public class S3Service {
                             .credentialsProvider(provider)
                             .build();
                 } catch (Exception ex) {
+                    log.warn("DefaultCredentialsProvider could not resolve credentials: {}", ex.getMessage());
                     return null;
                 }
             }
         } catch (Exception e) {
+            log.warn("Failed to build S3Client: {}", e.getMessage());
             return null;
         }
     }
@@ -111,12 +121,13 @@ public class S3Service {
             contentType = "image/jpeg";
         }
 
-        try (S3Client s3Client = buildS3Client()) {
-            if (s3Client == null) {
-                log.info("AWS S3 client credentials not configured. Storing image through local backend streaming.");
-                return null;
-            }
+        S3Client s3Client = buildS3Client();
+        if (s3Client == null) {
+            log.warn("AWS S3 client credentials or IAM instance role not available for upload to bucket [{}]. Storing in PostgreSQL with S3 reference.", bucketName);
+            return null;
+        }
 
+        try (s3Client) {
             PutObjectRequest putRequest = PutObjectRequest.builder()
                     .bucket(bucketName)
                     .key(objectKey)
@@ -128,7 +139,8 @@ public class S3Service {
             log.info("Successfully uploaded object to AWS S3: {}", endpointUrl);
             return endpointUrl;
         } catch (Exception e) {
-            log.warn("AWS S3 upload notice for {}: {}", objectKey, e.getMessage());
+            log.warn("AWS S3 direct upload failed for object [{}] in bucket [{}]: {}. Storing in PostgreSQL with S3 reference.",
+                    objectKey, bucketName, e.getMessage());
             return null;
         }
     }
@@ -171,10 +183,12 @@ public class S3Service {
         if (objectKey.startsWith("/")) {
             objectKey = objectKey.substring(1);
         }
-        try (S3Client s3Client = buildS3Client()) {
-            if (s3Client == null) {
-                return null;
-            }
+        S3Client s3Client = buildS3Client();
+        if (s3Client == null) {
+            log.warn("AWS S3 client not available to retrieve object [{}] from bucket [{}]", objectKey, bucketName);
+            return null;
+        }
+        try (s3Client) {
             GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                     .bucket(bucketName)
                     .key(objectKey)

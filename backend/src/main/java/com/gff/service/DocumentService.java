@@ -62,44 +62,50 @@ public class DocumentService {
         }
 
         String s3Key = "visiting-cards/" + finalRecordId + ".jpg";
-        String imageUrl = "/api/v1/documents/record/" + finalRecordId + "/image";
+        String s3Bucket = s3Service.getBucketName();
+        String imageUrl = "https://" + s3Bucket + ".s3." + s3Service.getRegion() + ".amazonaws.com/" + s3Key;
 
         if (request.getImageBase64() != null && !request.getImageBase64().trim().isEmpty()) {
+            byte[] imageBytes;
+            String contentType = "image/jpeg";
+            String rawBase64 = request.getImageBase64();
             try {
-                String base64Str = request.getImageBase64();
-                String contentType = "image/jpeg";
+                String base64Str = rawBase64;
                 if (base64Str.contains(",")) {
                     String prefix = base64Str.substring(0, base64Str.indexOf(","));
                     if (prefix.contains("image/png")) contentType = "image/png";
                     else if (prefix.contains("image/webp")) contentType = "image/webp";
                     base64Str = base64Str.substring(base64Str.indexOf(",") + 1);
                 }
-
-                byte[] imageBytes = java.util.Base64.getDecoder().decode(base64Str.trim());
-
-                // 1. Always save locally to ensure image is instantly viewable & never lost
-                try {
-                    java.nio.file.Path uploadDir = java.nio.file.Paths.get("uploads", "visiting-cards");
-                    java.nio.file.Files.createDirectories(uploadDir);
-                    java.nio.file.Path localFile = uploadDir.resolve(finalRecordId + ".jpg");
-                    java.nio.file.Files.write(localFile, imageBytes);
-                    log.info("Persisted card photo locally at: {}", localFile.toAbsolutePath());
-                } catch (Exception localErr) {
-                    log.warn("Local storage write notice: {}", localErr.getMessage());
-                }
-
-                // 2. Upload to AWS S3 if credentials are provided
-                try {
-                    String uploadedUrl = s3Service.uploadDirectToS3(imageBytes, s3Key, contentType);
-                    if (uploadedUrl != null && !uploadedUrl.trim().isEmpty()) {
-                        imageUrl = uploadedUrl;
-                        log.info("Uploaded card photo to AWS S3: {}", imageUrl);
-                    }
-                } catch (Exception s3Err) {
-                    log.warn("AWS S3 direct upload skipped/failed for record [{}]: {}", finalRecordId, s3Err.getMessage());
-                }
+                imageBytes = java.util.Base64.getDecoder().decode(base64Str.trim());
             } catch (Exception e) {
-                log.error("Failed to decode/store image for record [{}]: {}", finalRecordId, e.getMessage(), e);
+                log.error("Failed to decode base64 image data for record [{}]: {}", finalRecordId, e.getMessage());
+                throw new ApiException("Invalid base64 image payload: " + e.getMessage(), HttpStatus.BAD_REQUEST);
+            }
+
+            // Direct upload to AWS S3 bucket (NO local filesystem storage)
+            boolean s3Uploaded = false;
+            try {
+                String s3Url = s3Service.uploadDirectToS3(imageBytes, s3Key, contentType);
+                if (s3Url != null && !s3Url.trim().isEmpty()) {
+                    imageUrl = s3Url;
+                    s3Uploaded = true;
+                    log.info("Document image uploaded directly to AWS S3 bucket [{}]: key={}, url={}",
+                            s3Bucket, s3Key, imageUrl);
+                }
+            } catch (Exception s3Err) {
+                log.warn("AWS S3 direct upload skipped for record [{}]: {}", finalRecordId, s3Err.getMessage());
+            }
+
+            // If S3 upload wasn't completed (e.g. AWS credentials not configured on local machine),
+            // store image in PostgreSQL as data URI so it streams without 404 and WITHOUT local disk pollution!
+            if (!s3Uploaded) {
+                if (!rawBase64.startsWith("data:image/")) {
+                    imageUrl = "data:" + contentType + ";base64," + rawBase64;
+                } else {
+                    imageUrl = rawBase64;
+                }
+                log.info("Recorded S3 reference [{}] with image payload in PostgreSQL database (zero local filesystem storage).", s3Key);
             }
         }
 
@@ -122,7 +128,7 @@ public class DocumentService {
                 .notes(request.getNotes())
                 .imageUrl(imageUrl)
                 .s3Key(s3Key)
-                .s3Bucket("visiting-card-bkt")
+                .s3Bucket(s3Bucket)
                 .status(Boolean.TRUE.equals(request.getIsOffline()) ? RecordStatus.PENDING_UPLOAD : RecordStatus.UPLOADED)
                 .isOffline(request.getIsOffline() != null ? request.getIsOffline() : false)
                 .cardHolderName(request.getCardHolderName())
@@ -229,21 +235,34 @@ public class DocumentService {
 
     @Transactional(readOnly = true)
     public byte[] getCardImageBytes(String recordId) {
-        // 1. Try local filesystem storage
-        try {
-            java.nio.file.Path localFile = java.nio.file.Paths.get("uploads", "visiting-cards", recordId + ".jpg");
-            if (java.nio.file.Files.exists(localFile)) {
-                return java.nio.file.Files.readAllBytes(localFile);
-            }
-        } catch (Exception e) {
-            log.warn("Could not read local image for {}: {}", recordId, e.getMessage());
+        // Stream directly from AWS S3 bucket (no local filesystem storage)
+        VisitingCard card = visitingCardRepository.findByRecordId(recordId).orElse(null);
+        if (card == null) {
+            return null;
         }
 
-        // 2. Fetch from AWS S3
-        VisitingCard card = visitingCardRepository.findByRecordId(recordId).orElse(null);
-        if (card != null && card.getS3Key() != null && !card.getS3Key().trim().isEmpty()) {
-            return s3Service.getObjectBytes(card.getS3Key());
+        // 1. Try S3 bucket
+        if (card.getS3Key() != null && !card.getS3Key().trim().isEmpty()) {
+            try {
+                byte[] s3Bytes = s3Service.getObjectBytes(card.getS3Key());
+                if (s3Bytes != null && s3Bytes.length > 0) {
+                    return s3Bytes;
+                }
+            } catch (Exception e) {
+                log.debug("S3 retrieval skipped for record {}: {}", recordId, e.getMessage());
+            }
         }
+
+        // 2. Fallback to database image_url if stored as data URI (pure database storage, zero disk writes)
+        if (card.getImageUrl() != null && card.getImageUrl().startsWith("data:image/")) {
+            try {
+                String base64 = card.getImageUrl().substring(card.getImageUrl().indexOf(",") + 1);
+                return java.util.Base64.getDecoder().decode(base64.trim());
+            } catch (Exception e) {
+                log.warn("Failed to decode base64 from image_url for record {}: {}", recordId, e.getMessage());
+            }
+        }
+
         return null;
     }
 
