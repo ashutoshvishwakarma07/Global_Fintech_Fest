@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import { User, UploadRecord, UserRole, RecordStatus, DocumentType } from "@/types";
+import { apiService } from "@/services/apiService";
 import { RecordCard } from "./RecordCard";
 import { RecordTable } from "./RecordTable";
 import { RecordDetailModal } from "./RecordDetailModal";
@@ -24,6 +25,8 @@ import {
   Check,
   CheckCircle2,
   AlertCircle,
+  Send,
+  RefreshCw,
 } from "lucide-react";
 
 interface UploaderDropdownProps {
@@ -178,8 +181,29 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
   const [selectedRecord, setSelectedRecord] = useState<UploadRecord | null>(null);
   const [sharingRecord, setSharingRecord] = useState<UploadRecord | null>(null);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const [isTriggeringReport, setIsTriggeringReport] = useState(false);
 
   const isAdmin = currentUser.role === "Admin";
+
+  const handleTriggerDailyReport = async () => {
+    setIsTriggeringReport(true);
+    try {
+      const res = await apiService.triggerDailyReportEmail();
+      onNotify?.(
+        "success",
+        "Daily Report Email Dispatched",
+        res.message || "Processed pending cards & sent daily Excel report to team leads."
+      );
+    } catch (err: any) {
+      onNotify?.(
+        "error",
+        "Email Report Failed",
+        err.message || "Failed to trigger daily OCR report email."
+      );
+    } finally {
+      setIsTriggeringReport(false);
+    }
+  };
 
   // List of unique uploaders (for Admin filter)
   const uniqueUploaders = useMemo(() => {
@@ -367,9 +391,30 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
               </p>
             </div>
           </div>
-          <span className="hidden sm:inline-flex items-center px-3 py-1 bg-white/10 rounded-full text-xs font-semibold text-purple-100">
-            {records.length} Total Records
-          </span>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <button
+              type="button"
+              onClick={handleTriggerDailyReport}
+              disabled={isTriggeringReport}
+              title="Process pending OCR and email daily Excel report to team leads"
+              className="flex items-center gap-2 py-2 px-3.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs shadow-sm backdrop-blur-sm transition-all active:scale-95 disabled:opacity-60 cursor-pointer border border-white/20"
+            >
+              {isTriggeringReport ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
+                  <span>Sending Report...</span>
+                </>
+              ) : (
+                <>
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Trigger Email Report</span>
+                </>
+              )}
+            </button>
+            <span className="hidden sm:inline-flex items-center px-3 py-1 bg-white/10 rounded-full text-xs font-semibold text-purple-100">
+              {records.length} Total Records
+            </span>
+          </div>
         </div>
       )}
 

@@ -21,6 +21,8 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
+  Send,
+  FileSpreadsheet,
 } from "lucide-react";
 
 interface UserManagementDashboardProps {
@@ -39,6 +41,7 @@ const ALL_ROLES: UserRole[] = [
 export const UserManagementDashboard: React.FC<UserManagementDashboardProps> = ({ onNotify }) => {
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isTriggeringReport, setIsTriggeringReport] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedRole, setSelectedRole] = useState<"All" | UserRole>("All");
@@ -62,6 +65,26 @@ export const UserManagementDashboard: React.FC<UserManagementDashboardProps> = (
   }, [searchQuery]);
 
   const isFetchingRef = useRef(false);
+
+  const handleTriggerDailyReport = async () => {
+    setIsTriggeringReport(true);
+    try {
+      const res = await apiService.triggerDailyReportEmail();
+      notifyRef.current?.(
+        "success",
+        "Daily Report Email Dispatched",
+        res.message || "Processed pending cards & sent daily Excel report to team leads."
+      );
+    } catch (err: any) {
+      notifyRef.current?.(
+        "error",
+        "Email Report Failed",
+        err.message || "Failed to trigger daily OCR report email."
+      );
+    } finally {
+      setIsTriggeringReport(false);
+    }
+  };
 
   const fetchUsers = useCallback(async () => {
     if (isFetchingRef.current) return;
@@ -162,7 +185,26 @@ export const UserManagementDashboard: React.FC<UserManagementDashboardProps> = (
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <button
+            type="button"
+            onClick={handleTriggerDailyReport}
+            disabled={isTriggeringReport}
+            title="Process pending OCR and email daily Excel report to team leads"
+            className="flex items-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-md shadow-emerald-600/25 transition-all active:scale-95 disabled:opacity-60 cursor-pointer"
+          >
+            {isTriggeringReport ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                <span>Sending Report...</span>
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4" />
+                <span>Trigger Email Report</span>
+              </>
+            )}
+          </button>
           <button
             type="button"
             onClick={() => fetchUsers()}

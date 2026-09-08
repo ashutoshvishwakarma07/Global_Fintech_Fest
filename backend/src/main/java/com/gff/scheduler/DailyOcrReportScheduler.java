@@ -108,6 +108,20 @@ public class DailyOcrReportScheduler {
 
             log.info("OCR completed: {}", completedCount);
             log.info("OCR failed: {}", failedCount);
+
+            // If newly completed list is empty, include all un-emailed or all completed records so manual trigger always exports
+            if (newlyCompletedCards.isEmpty()) {
+                List<VisitingCard> unemailed = visitingCardRepository.findByOcrStatusAndEmailSentAtIsNull(OcrStatus.COMPLETED);
+                if (!unemailed.isEmpty()) {
+                    newlyCompletedCards.addAll(unemailed);
+                    log.info("Collected {} un-emailed completed records for export", unemailed.size());
+                } else {
+                    List<VisitingCard> allCompleted = visitingCardRepository.findByOcrStatus(OcrStatus.COMPLETED);
+                    newlyCompletedCards.addAll(allCompleted);
+                    log.info("Collected {} total completed records for on-demand export", allCompleted.size());
+                }
+            }
+
             log.info("Records ready for export: {}", newlyCompletedCards.size());
 
             boolean emailSent = false;
