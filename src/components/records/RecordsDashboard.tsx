@@ -363,7 +363,7 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
                 </span>
               </div>
               <p className="text-xs text-purple-100 mt-0.5">
-                Viewing all uploaded records and extracted IRIS OCR data across Rahul Sharma, Priya Verma, and Admin.
+                Viewing all uploaded records and extracted OCR data across all field users.
               </p>
             </div>
           </div>

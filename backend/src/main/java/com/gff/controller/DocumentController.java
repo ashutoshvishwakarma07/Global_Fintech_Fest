@@ -138,6 +138,24 @@ public class DocumentController {
         return ResponseEntity.ok(ApiResponse.success("OCR extraction processed for record " + recordId, record));
     }
 
+    @DeleteMapping("/record/{recordId}")
+    public ResponseEntity<ApiResponse<Void>> deleteDocument(
+            @PathVariable String recordId,
+            HttpServletRequest httpRequest) {
+
+        User currentUser = (User) httpRequest.getAttribute("currentUser");
+        if (currentUser == null) {
+            throw new ApiException("Full authentication is required to delete documents", HttpStatus.UNAUTHORIZED);
+        }
+
+        documentService.deleteDocumentByRecordId(
+                recordId,
+                currentUser.getEmail(),
+                currentUser.getRole().name()
+        );
+        return ResponseEntity.ok(ApiResponse.success("Document deleted successfully", null));
+    }
+
     /**
      * Admin manual trigger for 11:15 PM OCR batch job.
      */

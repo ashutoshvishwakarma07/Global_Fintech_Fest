@@ -76,7 +76,7 @@ export const RecordTable: React.FC<RecordTableProps> = ({ records, onSelect, onS
                     </span>
                   </td>
 
-                  {/* Document Details (IRIS OCR) */}
+                  {/* Document Details (OCR) */}
                   <td className="py-3 px-4 whitespace-nowrap">
                     {record.extractedData ? (
                       <div>

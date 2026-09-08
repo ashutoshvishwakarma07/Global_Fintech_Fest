@@ -22,12 +22,15 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.ResponseBytes;
+import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 /**
  * Service for uploading documents directly to AWS S3
@@ -52,93 +55,82 @@ public class S3Service {
 
     private final HttpClient httpClient;
 
-    private static final DateTimeFormatter AMZ_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'");
-    private static final DateTimeFormatter DATE_STAMP_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
-
     public S3Service() {
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(30))
                 .build();
     }
 
+    public boolean hasValidCredentials() {
+        return accessKey != null && !accessKey.trim().isEmpty()
+                && secretKey != null && !secretKey.trim().isEmpty();
+    }
+
+    private S3Client buildS3Client() {
+        try {
+            if (hasValidCredentials()) {
+                return S3Client.builder()
+                        .region(Region.of(region))
+                        .credentialsProvider(StaticCredentialsProvider.create(
+                                AwsBasicCredentials.create(accessKey.trim(), secretKey.trim())
+                        ))
+                        .build();
+            } else {
+                try {
+                    DefaultCredentialsProvider provider = DefaultCredentialsProvider.create();
+                    provider.resolveCredentials();
+                    return S3Client.builder()
+                            .region(Region.of(region))
+                            .credentialsProvider(provider)
+                            .build();
+                } catch (Exception ex) {
+                    return null;
+                }
+            }
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     /**
-     * Uploads in-memory byte array directly to AWS S3 bucket using AWS SigV4.
+     * Uploads in-memory byte array directly to AWS S3 bucket.
      *
      * @param data        Raw file bytes
      * @param objectKey   S3 key (e.g. "visiting-cards/REC-123.jpg")
      * @param contentType MIME type (e.g. "image/jpeg")
      * @return Public/Object URL of the uploaded S3 asset
      */
-    public String uploadDirectToS3(byte[] data, String objectKey, String contentType) throws Exception {
-        if (contentType == null || contentType.isEmpty()) {
-            contentType = "image/jpeg";
+    public String uploadDirectToS3(byte[] data, String objectKey, String contentType) {
+        if (data == null || data.length == 0 || objectKey == null || objectKey.trim().isEmpty()) {
+            return null;
         }
-
-        // Clean leading slash
         if (objectKey.startsWith("/")) {
             objectKey = objectKey.substring(1);
         }
-
-        String host = bucketName + ".s3." + region + ".amazonaws.com";
-        String endpointUrl = "https://" + host + "/" + objectKey;
-
-        ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
-        String amzDate = now.format(AMZ_DATE_FORMAT);
-        String dateStamp = now.format(DATE_STAMP_FORMAT);
-
-        byte[] payloadHashBytes = sha256(data);
-        String payloadHashHex = toHex(payloadHashBytes);
-
-        String canonicalUri = "/" + objectKey;
-        String canonicalHeaders = "content-type:" + contentType + "\n"
-                + "host:" + host + "\n"
-                + "x-amz-content-sha256:" + payloadHashHex + "\n"
-                + "x-amz-date:" + amzDate + "\n";
-        String signedHeaders = "content-type;host;x-amz-content-sha256;x-amz-date";
-
-        String canonicalRequest = "PUT\n"
-                + canonicalUri + "\n"
-                + "\n" // query string
-                + canonicalHeaders + "\n"
-                + signedHeaders + "\n"
-                + payloadHashHex;
-
-        String algorithm = "AWS4-HMAC-SHA256";
-        String credentialScope = dateStamp + "/" + region + "/s3/aws4_request";
-        String stringToSign = algorithm + "\n"
-                + amzDate + "\n"
-                + credentialScope + "\n"
-                + toHex(sha256(canonicalRequest.getBytes(StandardCharsets.UTF_8)));
-
-        byte[] signingKey = getSignatureKey(secretKey, dateStamp, region, "s3");
-        String signature = toHex(hmacSha256(signingKey, stringToSign));
-
-        String authHeader = algorithm + " "
-                + "Credential=" + accessKey + "/" + credentialScope + ", "
-                + "SignedHeaders=" + signedHeaders + ", "
-                + "Signature=" + signature;
-
-        log.info("Initiating AWS S3 PUT to {} (size: {} bytes)", endpointUrl, data.length);
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(endpointUrl))
-                .header("Content-Type", contentType)
-                .header("x-amz-content-sha256", payloadHashHex)
-                .header("x-amz-date", amzDate)
-                .header("Authorization", authHeader)
-                .PUT(HttpRequest.BodyPublishers.ofByteArray(data))
-                .build();
-
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-        if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            log.error("S3 upload failed with HTTP {}: {}", response.statusCode(), response.body());
-            throw new IOException(String.format("AWS S3 upload failed (HTTP %d): %s",
-                    response.statusCode(), response.body()));
+        if (contentType == null || contentType.trim().isEmpty()) {
+            contentType = "image/jpeg";
         }
 
-        log.info("Successfully uploaded object to AWS S3: {}", endpointUrl);
-        return endpointUrl;
+        try (S3Client s3Client = buildS3Client()) {
+            if (s3Client == null) {
+                log.info("AWS S3 client credentials not configured. Storing image through local backend streaming.");
+                return null;
+            }
+
+            PutObjectRequest putRequest = PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(objectKey)
+                    .contentType(contentType)
+                    .build();
+
+            s3Client.putObject(putRequest, RequestBody.fromBytes(data));
+            String endpointUrl = "https://" + bucketName + ".s3." + region + ".amazonaws.com/" + objectKey;
+            log.info("Successfully uploaded object to AWS S3: {}", endpointUrl);
+            return endpointUrl;
+        } catch (Exception e) {
+            log.warn("AWS S3 upload notice for {}: {}", objectKey, e.getMessage());
+            return null;
+        }
     }
 
     /**
@@ -179,16 +171,10 @@ public class S3Service {
         if (objectKey.startsWith("/")) {
             objectKey = objectKey.substring(1);
         }
-        if (accessKey == null || accessKey.trim().isEmpty() || secretKey == null || secretKey.trim().isEmpty()) {
-            log.warn("AWS credentials not configured, cannot fetch S3 object: {}", objectKey);
-            return null;
-        }
-
-        try (S3Client s3Client = S3Client.builder()
-                .region(Region.of(region))
-                .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey)))
-                .build()) {
-
+        try (S3Client s3Client = buildS3Client()) {
+            if (s3Client == null) {
+                return null;
+            }
             GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                     .bucket(bucketName)
                     .key(objectKey)
@@ -197,35 +183,8 @@ public class S3Service {
             ResponseBytes<GetObjectResponse> responseBytes = s3Client.getObjectAsBytes(getObjectRequest);
             return responseBytes.asByteArray();
         } catch (Exception e) {
-            log.error("Failed to retrieve S3 object [{}] from bucket [{}]: {}", objectKey, bucketName, e.getMessage());
+            log.warn("Could not retrieve S3 object [{}] from bucket [{}]: {}", objectKey, bucketName, e.getMessage());
             return null;
         }
-    }
-
-    private byte[] sha256(byte[] data) throws Exception {
-        MessageDigest md = MessageDigest.getInstance("SHA-256");
-        return md.digest(data);
-    }
-
-    private byte[] hmacSha256(byte[] key, String data) throws Exception {
-        Mac mac = Mac.getInstance("HmacSHA256");
-        mac.init(new SecretKeySpec(key, "HmacSHA256"));
-        return mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
-    }
-
-    private byte[] getSignatureKey(String key, String dateStamp, String regionName, String serviceName) throws Exception {
-        byte[] kSecret = ("AWS4" + key).getBytes(StandardCharsets.UTF_8);
-        byte[] kDate = hmacSha256(kSecret, dateStamp);
-        byte[] kRegion = hmacSha256(kDate, regionName);
-        byte[] kService = hmacSha256(kRegion, serviceName);
-        return hmacSha256(kService, "aws4_request");
-    }
-
-    private String toHex(byte[] bytes) {
-        StringBuilder sb = new StringBuilder(bytes.length * 2);
-        for (byte b : bytes) {
-            sb.append(String.format("%02x", b));
-        }
-        return sb.toString();
     }
 }

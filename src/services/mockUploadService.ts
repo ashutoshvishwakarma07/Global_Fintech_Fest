@@ -2,92 +2,7 @@ import { UploadRecord, User } from "@/types";
 
 const RECORDS_STORAGE_KEY = "gff_uploaded_records_online";
 
-const INITIAL_SEED_RECORDS: UploadRecord[] = [
-  {
-    id: "IMG-1001",
-    imageUrl: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=600&auto=format&fit=crop&q=80",
-    uploadedBy: "Rahul Sharma",
-    userId: "usr_1",
-    email: "user1@demo.com",
-    mobile: "9876543210",
-    role: "Field User",
-    uploadedAt: "2026-09-04 18:30",
-    status: "Uploaded",
-    notes: "Merchant onboarding document verification at North Mumbai hub",
-    fileSize: "1.4 MB",
-    extractedData: {
-      documentType: "PAN Card",
-      documentNumber: "ABCDE1234F",
-      extractedName: "Rahul Sharma",
-      issueDate: "2021-08-12",
-      confidence: 99.2,
-      rawText: "INCOME TAX DEPARTMENT, GOVT OF INDIA\nPermanent Account Number: ABCDE1234F\nName: Rahul Sharma",
-    },
-  },
-  {
-    id: "IMG-1002",
-    imageUrl: "https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=600&auto=format&fit=crop&q=80",
-    uploadedBy: "Priya Verma",
-    userId: "usr_2",
-    email: "user2@demo.com",
-    mobile: "9812345678",
-    role: "Supervisor",
-    uploadedAt: "2026-09-04 16:15",
-    status: "Verified",
-    notes: "POS terminal hardware deployment certificate check",
-    fileSize: "2.1 MB",
-    extractedData: {
-      documentType: "POS Certificate",
-      documentNumber: "POS-TID-884920",
-      extractedName: "Priya Verma",
-      issueDate: "2024-02-19",
-      confidence: 98.7,
-      rawText: "MERCHANT ONBOARDING TERMINAL CERTIFICATION\nTID: 884920\nHardware ID: HW-2918\nSupervisor: Priya Verma",
-    },
-  },
-  {
-    id: "IMG-1003",
-    imageUrl: "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=600&auto=format&fit=crop&q=80",
-    uploadedBy: "Rahul Sharma",
-    userId: "usr_1",
-    email: "user1@demo.com",
-    mobile: "9876543210",
-    role: "Field User",
-    uploadedAt: "2026-09-03 11:45",
-    status: "Verified",
-    notes: "Storefront KYC photo compliance check",
-    fileSize: "980 KB",
-    extractedData: {
-      documentType: "Aadhaar Card",
-      documentNumber: "4812-9901-4421",
-      extractedName: "Rahul Sharma",
-      issueDate: "2019-11-04",
-      confidence: 97.9,
-      rawText: "UNIQUE IDENTIFICATION AUTHORITY OF INDIA\nAadhaar: 4812 9901 4421\nDOB: 14/05/1992",
-    },
-  },
-  {
-    id: "IMG-1004",
-    imageUrl: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=600&auto=format&fit=crop&q=80",
-    uploadedBy: "Priya Verma",
-    userId: "usr_2",
-    email: "user2@demo.com",
-    mobile: "9812345678",
-    role: "Supervisor",
-    uploadedAt: "2026-09-02 14:20",
-    status: "Verified",
-    notes: "Quarterly audit documentation",
-    fileSize: "1.8 MB",
-    extractedData: {
-      documentType: "Invoice / Receipt",
-      documentNumber: "INV-2026-0891",
-      extractedName: "Priya Verma",
-      issueDate: "2026-08-30",
-      confidence: 99.4,
-      rawText: "TAX INVOICE - GFF FIELD SERVICES\nInvoice #: INV-2026-0891\nAmount: INR 4,250.00",
-    },
-  },
-];
+const INITIAL_SEED_RECORDS: UploadRecord[] = [];
 
 let inMemoryRecords: UploadRecord[] | null = null;
 
@@ -96,19 +11,28 @@ export const mockUploadService = {
     if (inMemoryRecords && inMemoryRecords.length > 0) {
       return inMemoryRecords;
     }
-    if (typeof window === "undefined") return INITIAL_SEED_RECORDS;
+    if (typeof window === "undefined") return [];
     try {
       const stored = localStorage.getItem(RECORDS_STORAGE_KEY);
       if (!stored) {
-        localStorage.setItem(RECORDS_STORAGE_KEY, JSON.stringify(INITIAL_SEED_RECORDS));
-        inMemoryRecords = [...INITIAL_SEED_RECORDS];
-        return INITIAL_SEED_RECORDS;
+        return [];
       }
-      inMemoryRecords = JSON.parse(stored);
-      return inMemoryRecords || INITIAL_SEED_RECORDS;
+      const parsed: UploadRecord[] = JSON.parse(stored);
+      const sanitized = (parsed || []).filter(
+        (r) =>
+          !r.cardHolderName?.includes("NONI SONANI") &&
+          !r.uploadedBy?.includes("Rahul Sharma") &&
+          !r.uploadedBy?.includes("Priya Verma") &&
+          !r.extractedData?.rawText?.includes("NONI SONANI") &&
+          !r.extractedData?.rawText?.includes("INCOME TAX")
+      );
+      if (sanitized.length !== (parsed || []).length) {
+        localStorage.setItem(RECORDS_STORAGE_KEY, JSON.stringify(sanitized));
+      }
+      inMemoryRecords = sanitized;
+      return sanitized;
     } catch {
-      inMemoryRecords = [...INITIAL_SEED_RECORDS];
-      return INITIAL_SEED_RECORDS;
+      return [];
     }
   },
 

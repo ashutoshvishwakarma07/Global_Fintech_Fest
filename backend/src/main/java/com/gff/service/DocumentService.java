@@ -61,8 +61,8 @@ public class DocumentService {
             finalRecordId = "IMG-" + System.currentTimeMillis();
         }
 
-        String s3Key = null;
-        String imageUrl = null;
+        String s3Key = "visiting-cards/" + finalRecordId + ".jpg";
+        String imageUrl = "/api/v1/documents/record/" + finalRecordId + "/image";
 
         if (request.getImageBase64() != null && !request.getImageBase64().trim().isEmpty()) {
             try {
@@ -76,15 +76,30 @@ public class DocumentService {
                 }
 
                 byte[] imageBytes = java.util.Base64.getDecoder().decode(base64Str.trim());
-                String candidateKey = "visiting-cards/" + finalRecordId + ".jpg";
-                String uploadedUrl = s3Service.uploadDirectToS3(imageBytes, candidateKey, contentType);
-                if (uploadedUrl != null && !uploadedUrl.trim().isEmpty()) {
-                    s3Key = candidateKey;
-                    imageUrl = uploadedUrl;
-                    log.info("Uploaded card photo to AWS S3: {}", imageUrl);
+
+                // 1. Always save locally to ensure image is instantly viewable & never lost
+                try {
+                    java.nio.file.Path uploadDir = java.nio.file.Paths.get("uploads", "visiting-cards");
+                    java.nio.file.Files.createDirectories(uploadDir);
+                    java.nio.file.Path localFile = uploadDir.resolve(finalRecordId + ".jpg");
+                    java.nio.file.Files.write(localFile, imageBytes);
+                    log.info("Persisted card photo locally at: {}", localFile.toAbsolutePath());
+                } catch (Exception localErr) {
+                    log.warn("Local storage write notice: {}", localErr.getMessage());
+                }
+
+                // 2. Upload to AWS S3 if credentials are provided
+                try {
+                    String uploadedUrl = s3Service.uploadDirectToS3(imageBytes, s3Key, contentType);
+                    if (uploadedUrl != null && !uploadedUrl.trim().isEmpty()) {
+                        imageUrl = uploadedUrl;
+                        log.info("Uploaded card photo to AWS S3: {}", imageUrl);
+                    }
+                } catch (Exception s3Err) {
+                    log.warn("AWS S3 direct upload skipped/failed for record [{}]: {}", finalRecordId, s3Err.getMessage());
                 }
             } catch (Exception e) {
-                log.error("Failed to upload image to S3 for record [{}]: {}", finalRecordId, e.getMessage(), e);
+                log.error("Failed to decode/store image for record [{}]: {}", finalRecordId, e.getMessage(), e);
             }
         }
 
@@ -122,6 +137,14 @@ public class DocumentService {
                 .build();
 
         VisitingCard saved = visitingCardRepository.save(card);
+        if (!hasOcr) {
+            try {
+                dynamicOcrService.processCardOcrDynamically(saved);
+                saved = visitingCardRepository.save(saved);
+            } catch (Exception e) {
+                log.warn("Dynamic OCR extraction during upload for {} notice: {}", saved.getRecordId(), e.getMessage());
+            }
+        }
         log.info("Created visiting card record: {} by {}", saved.getRecordId(), saved.getUploaderEmail());
         return DocumentResponse.fromEntity(saved);
     }
@@ -195,13 +218,33 @@ public class DocumentService {
         return DocumentResponse.fromEntity(updated);
     }
 
+    @Transactional
+    public void deleteDocumentByRecordId(String recordId, String currentUserEmail, String currentUserRole) {
+        VisitingCard card = visitingCardRepository.findByRecordId(recordId)
+                .orElseThrow(() -> new ResourceNotFoundException("VisitingCard", "recordId", recordId));
+        validateOwnership(card, currentUserEmail, currentUserRole);
+        visitingCardRepository.delete(card);
+        log.info("Deleted visiting card record: {} by {}", recordId, currentUserEmail);
+    }
+
     @Transactional(readOnly = true)
     public byte[] getCardImageBytes(String recordId) {
-        VisitingCard card = visitingCardRepository.findByRecordId(recordId).orElse(null);
-        if (card == null || card.getS3Key() == null || card.getS3Key().trim().isEmpty()) {
-            return null;
+        // 1. Try local filesystem storage
+        try {
+            java.nio.file.Path localFile = java.nio.file.Paths.get("uploads", "visiting-cards", recordId + ".jpg");
+            if (java.nio.file.Files.exists(localFile)) {
+                return java.nio.file.Files.readAllBytes(localFile);
+            }
+        } catch (Exception e) {
+            log.warn("Could not read local image for {}: {}", recordId, e.getMessage());
         }
-        return s3Service.getObjectBytes(card.getS3Key());
+
+        // 2. Fetch from AWS S3
+        VisitingCard card = visitingCardRepository.findByRecordId(recordId).orElse(null);
+        if (card != null && card.getS3Key() != null && !card.getS3Key().trim().isEmpty()) {
+            return s3Service.getObjectBytes(card.getS3Key());
+        }
+        return null;
     }
 
     @Transactional(readOnly = true)

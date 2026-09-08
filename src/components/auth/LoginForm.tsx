@@ -79,7 +79,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
           </div>
           <div>
             <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-              <span>IRIS Neural OCR</span>
+              <span>Neural OCR Engine</span>
               <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-100 text-emerald-700">
                 v2.4
               </span>
@@ -135,7 +135,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
         </h1>
         <div className="inline-flex items-center gap-2 mt-1 px-3 py-1 rounded-full bg-indigo-50/80 border border-indigo-100/80 text-[11px] font-medium text-indigo-700">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span>Online Document Verification & IRIS Extraction</span>
+          <span>Online Document Verification & OCR Extraction</span>
         </div>
       </header>
 
@@ -280,7 +280,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
           </span>
-          <span className="font-medium text-slate-600">IRIS Engine v2.4 Active</span>
+          <span className="font-medium text-slate-600">OCR Engine v2.4 Active</span>
           <span className="text-slate-300">•</span>
           <span className="text-slate-500">Enterprise Field Operations</span>
         </div>

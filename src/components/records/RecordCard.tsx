@@ -97,7 +97,7 @@ export const RecordCard: React.FC<RecordCardProps> = ({ record, onSelect, onShar
         </div>
       </div>
 
-      {/* IRIS OCR Extracted Document Snippet */}
+      {/* OCR Extracted Document Snippet */}
       {record.extractedData && (
         <div className="bg-indigo-50/70 rounded-xl px-3 py-2 border border-indigo-100 flex items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-1.5 min-w-0">

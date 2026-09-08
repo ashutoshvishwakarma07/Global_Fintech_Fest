@@ -246,7 +246,7 @@ export const TwoSideCapture: React.FC<TwoSideCaptureProps> = ({
               </div>
               <h3 className="text-base font-bold text-slate-900">Final Collage Preview</h3>
               <p className="text-xs text-slate-500">
-                Front and back sides stacked into a single high-resolution image for IRIS OCR.
+                Front and back sides stacked into a single high-resolution image for OCR processing.
               </p>
             </div>
             <span className="text-xs font-mono text-slate-400 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200">

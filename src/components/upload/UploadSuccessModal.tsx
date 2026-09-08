@@ -59,16 +59,16 @@ export const UploadSuccessModal: React.FC<UploadSuccessModalProps> = ({
 
         <h3 className="text-xl font-bold text-slate-900">Upload & Extraction Complete!</h3>
         <p className="text-xs text-slate-500 mt-1 mb-4 leading-relaxed">
-          Document was processed by IRIS OCR API and stored in your records.
+          Document was processed by OCR API and stored in your records.
         </p>
 
-        {/* IRIS OCR Extracted Data Card */}
+        {/* OCR Extracted Data Card */}
         {record.extractedData && (
           <div className="mb-4 bg-gradient-to-br from-indigo-50/90 to-purple-50/70 border border-indigo-200/80 rounded-2xl p-3.5 text-left space-y-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-indigo-700 font-bold text-xs">
                 <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                <span>IRIS OCR Result</span>
+                <span>OCR Result</span>
               </div>
               <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
                 <ShieldCheck className="w-3 h-3 text-emerald-600" />

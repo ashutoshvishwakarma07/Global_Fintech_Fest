@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { ManagedUser, UserRole } from "@/types";
 import { apiService } from "@/services/apiService";
 import { CreateUserModal } from "./CreateUserModal";
@@ -40,28 +40,48 @@ export const UserManagementDashboard: React.FC<UserManagementDashboardProps> = (
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedRole, setSelectedRole] = useState<"All" | UserRole>("All");
   const [selectedStatus, setSelectedStatus] = useState<"All" | "Active" | "Inactive">("All");
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
 
+  // Keep a stable ref to onNotify so it never causes fetchUsers to re-trigger
+  const notifyRef = useRef(onNotify);
+  useEffect(() => {
+    notifyRef.current = onNotify;
+  }, [onNotify]);
+
+  // Debounce search input changes by 300ms to avoid unnecessary re-renders/fetches
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  const isFetchingRef = useRef(false);
+
   const fetchUsers = useCallback(async () => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
     setIsLoading(true);
     try {
       const roleFilter = selectedRole !== "All" ? selectedRole : undefined;
       const statusFilter =
         selectedStatus === "Active" ? true : selectedStatus === "Inactive" ? false : undefined;
 
-      const data = await apiService.getAdminUsers(searchQuery, roleFilter, statusFilter);
-      setUsers(data);
+      const data = await apiService.getAdminUsers(debouncedSearch, roleFilter, statusFilter);
+      setUsers(data || []);
     } catch (err: any) {
       console.error("Failed to load users:", err);
-      onNotify?.("error", "Error Loading Users", err.message || "Failed to fetch user list from backend");
+      notifyRef.current?.("error", "Error Loading Users", err.message || "Failed to fetch user list from backend");
     } finally {
       setIsLoading(false);
+      isFetchingRef.current = false;
     }
-  }, [searchQuery, selectedRole, selectedStatus, onNotify]);
+  }, [debouncedSearch, selectedRole, selectedStatus]);
 
   useEffect(() => {
     fetchUsers();

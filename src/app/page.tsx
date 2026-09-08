@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { User, UploadRecord, CaptureMode } from "@/types";
 import { authService } from "@/services/authService";
-import { mockUploadService } from "@/services/mockUploadService";
+import { apiService } from "@/services/apiService";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -47,23 +47,28 @@ export default function Home() {
 
   const nativeInputRef = useRef<HTMLInputElement | null>(null);
 
-  const addToast = (type: "success" | "error" | "info", title: string, message?: string) => {
+  const addToast = useCallback((type: "success" | "error" | "info", title: string, message?: string) => {
     const id = Date.now().toString() + Math.random().toString(36).substring(2, 5);
     setToasts((prev) => [...prev, { id, type, title, message }]);
-  };
+  }, []);
 
-  const removeToast = (id: string) => {
+  const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
+  }, []);
 
-  const refreshRecords = useCallback((targetUser?: User | null) => {
+  const refreshRecords = useCallback(async (targetUser?: User | null) => {
     const userToQuery = targetUser !== undefined ? targetUser : currentUser;
     if (!userToQuery) {
       setRecords([]);
       return;
     }
-    const userRecords = mockUploadService.getRecordsForUser(userToQuery);
-    setRecords(userRecords);
+    try {
+      const liveRecords = await apiService.getLiveRecords(userToQuery);
+      setRecords(liveRecords);
+    } catch (err) {
+      console.warn("Failed to query live database records:", err);
+      setRecords([]);
+    }
   }, [currentUser]);
 
   // Initialize Auth & Records on mount
@@ -74,8 +79,12 @@ export default function Home() {
         const user = await authService.getMe();
         if (isMounted && user) {
           setCurrentUser(user);
-          const userRecords = mockUploadService.getRecordsForUser(user);
-          setRecords(userRecords);
+          try {
+            const liveRecords = await apiService.getLiveRecords(user);
+            if (isMounted) setRecords(liveRecords);
+          } catch {
+            if (isMounted) setRecords([]);
+          }
         }
       } catch {
         // User not authenticated
@@ -89,10 +98,14 @@ export default function Home() {
     };
   }, []);
 
-  const handleLoginSuccess = (user: User) => {
+  const handleLoginSuccess = async (user: User) => {
     setCurrentUser(user);
-    const userRecords = mockUploadService.getRecordsForUser(user);
-    setRecords(userRecords);
+    try {
+      const liveRecords = await apiService.getLiveRecords(user);
+      setRecords(liveRecords);
+    } catch {
+      setRecords([]);
+    }
     addToast("success", `Welcome back, ${user.name}!`, `Signed in as ${user.role}`);
   };
 
@@ -158,15 +171,19 @@ export default function Home() {
     addToast(
       "success",
       "Two-Sided Collage Generated",
-      "Review document details and submit for IRIS OCR"
+      "Review document details and submit for OCR processing"
     );
   };
 
-  // Triggered when upload form submits successfully (online IRIS API completed)
-  const handleUploadComplete = (newRecord: UploadRecord) => {
+  // Triggered when upload form submits successfully (online OCR API completed)
+  const handleUploadComplete = async (newRecord: UploadRecord) => {
     if (currentUser) {
-      const updated = mockUploadService.getRecordsForUser(currentUser);
-      setRecords(updated);
+      try {
+        const updated = await apiService.getLiveRecords(currentUser);
+        setRecords(updated);
+      } catch (err) {
+        console.warn("Failed to refresh live records after upload:", err);
+      }
     }
     setSuccessRecord(newRecord);
     setCapturedImage(null);
@@ -177,7 +194,7 @@ export default function Home() {
     const confPct = Math.round(confVal <= 1 ? confVal * 100 : confVal);
     addToast(
       "success",
-      `IRIS OCR Extracted: ${newRecord.extractedData?.documentType || "Document"}`,
+      `OCR Extracted: ${newRecord.extractedData?.documentType || "Document"}`,
       `Record ${newRecord.id} saved with ${confPct}% confidence`
     );
   };

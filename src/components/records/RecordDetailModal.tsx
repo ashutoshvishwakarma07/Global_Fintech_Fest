@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   Calendar,
   Hash,
+  Camera,
 } from "lucide-react";
 import { getDisplayImageUrl } from "@/utils/imageUrl";
 
@@ -190,23 +191,25 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({ record, on
           )}
 
           {/* Large Image Preview */}
-          <div className="relative rounded-2xl overflow-hidden bg-slate-900 aspect-[4/3] w-full shadow-inner border border-slate-200 flex items-center justify-center">
+          <div className="relative rounded-2xl overflow-hidden bg-slate-100 aspect-[4/3] w-full shadow-inner border border-slate-200 flex items-center justify-center">
             {imageError ? (
-              <div className="p-6 text-center text-white flex flex-col items-center gap-2.5">
-                <div className="w-12 h-12 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-indigo-400">
-                  <ShieldCheck className="w-6 h-6" />
+              <div className="p-6 text-center text-slate-500 flex flex-col items-center gap-2">
+                <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-400">
+                  <Camera className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-sm text-slate-200">Secure AWS S3 Document</h4>
-                  <p className="text-xs text-slate-400 max-w-xs mt-1">
-                    Uploaded securely to private AWS S3 bucket (<span className="font-mono text-indigo-300">visiting-card-bkt</span>). Direct unauthenticated public URL access is restricted by AWS IAM.
+                  <h4 className="font-semibold text-sm text-slate-700">Image Preview Unavailable</h4>
+                  <p className="text-xs text-slate-400 max-w-xs mt-0.5">
+                    The document image could not be loaded or is being processed.
                   </p>
                 </div>
-                {record.s3Url && (
-                  <span className="text-[10px] font-mono text-slate-400 bg-slate-800/90 px-2.5 py-1 rounded-md max-w-sm truncate border border-slate-700/60">
-                    {record.s3Url}
-                  </span>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setImageError(false)}
+                  className="mt-1 text-xs text-indigo-600 hover:text-indigo-700 font-semibold underline"
+                >
+                  Retry Loading
+                </button>
               </div>
             ) : (
               <img
@@ -229,13 +232,13 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({ record, on
             )}
           </div>
 
-          {/* IRIS OCR Extraction Section */}
+          {/* OCR Extraction Section */}
           {record.extractedData ? (
             <div className="bg-gradient-to-br from-indigo-50/90 to-purple-50/70 rounded-2xl p-4 border border-indigo-200/80 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-indigo-900 font-bold text-xs">
                   <Sparkles className="w-4 h-4 text-indigo-600" />
-                  <span>IRIS API Extraction Results</span>
+                  <span>OCR Extraction Results</span>
                 </div>
                 <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
                   <ShieldCheck className="w-3 h-3 text-emerald-600" />
@@ -252,7 +255,7 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({ record, on
                 <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs col-span-2">
                   <span className="text-[10px] text-slate-400 uppercase font-semibold block">Card Holder Name</span>
                   <span className="text-sm font-bold text-slate-900">
-                    {record.cardHolderName || record.extractedData.cardHolderName || (record.extractedData.extractedName !== record.uploadedBy ? record.extractedData.extractedName : "NONI SONANI")}
+                    {record.cardHolderName || record.extractedData?.cardHolderName || (record.extractedData?.extractedName !== record.uploadedBy ? record.extractedData?.extractedName : "") || "—"}
                   </span>
                 </div>
 
@@ -316,21 +319,11 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({ record, on
                   </div>
                 )}
 
-                {record.extractedData.rawText && (
-                  <div className="bg-white p-2.5 rounded-xl border border-indigo-100 shadow-2xs col-span-2">
-                    <span className="text-[10px] text-slate-400 uppercase font-semibold block mb-1">OCR Raw Extracted Text</span>
-                    <div className="font-mono text-[10px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-200/60 leading-relaxed max-h-24 overflow-y-auto whitespace-pre-line">
-                      {record.extractedData.rawText.includes("INCOME TAX")
-                        ? "NONI SONANI\nSOFTWARE ENGINEER\nIMGC\n+91 98765 43210\nnoni.sonani@gmail.com\nNagpur, Maharashtra, India\nwww.yourwebsite.com"
-                        : record.extractedData.rawText}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           ) : (
             <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 text-center text-xs text-slate-500">
-              No IRIS OCR data attached to this record.
+              No OCR data attached to this record.
             </div>
           )}
 

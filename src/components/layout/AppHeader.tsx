@@ -51,7 +51,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                 FieldCapture
               </h1>
               <span className="inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-                IRIS OCR
+                Smart OCR
               </span>
             </div>
             <span className="text-[10px] text-slate-500 font-medium">GFF Enterprise Portal</span>

@@ -1,15 +1,35 @@
 /**
  * Centralized API Base URL configuration.
- * Dynamically resolves NEXT_PUBLIC_API_URL for Local development vs AWS EC2 production.
- * Automatically handles whether the context-path '/api/v1' is present in the env variable.
+ * Dynamically resolves API URL for both Local development (localhost) and Production (18.60.179.46).
  */
-function resolveApiBaseUrl(): string {
-  // Read from environment; default safely to localhost for local development
+export function getApiBaseUrl(): string {
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    // If accessed via production IP, route calls to production backend
+    if (host === "18.60.179.46") {
+      return "http://18.60.179.46:8080/api/v1";
+    }
+    // If accessed via another remote domain or IP, dynamically target port 8080
+    if (host && host !== "localhost" && host !== "127.0.0.1") {
+      return `${window.location.protocol}//${host}:8080/api/v1`;
+    }
+  }
   const envUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
   const trimmed = envUrl.trim().replace(/\/+$/, "");
-
-  // If already ends with /api/v1, return as is. Otherwise append /api/v1
   return trimmed.endsWith("/api/v1") ? trimmed : `${trimmed}/api/v1`;
 }
 
-export const API_BASE_URL = resolveApiBaseUrl();
+// Proxy/String wrapper to ensure template strings `${API_BASE_URL}/path`
+// always evaluate getApiBaseUrl() dynamically in real time
+export const API_BASE_URL = {
+  toString: () => getApiBaseUrl(),
+  valueOf: () => getApiBaseUrl(),
+  concat: (...args: string[]) => getApiBaseUrl().concat(...args),
+  replace: (pattern: any, replacement: any) => getApiBaseUrl().replace(pattern, replacement),
+  endsWith: (searchString: string) => getApiBaseUrl().endsWith(searchString),
+  startsWith: (searchString: string) => getApiBaseUrl().startsWith(searchString),
+  includes: (searchString: string) => getApiBaseUrl().includes(searchString),
+  indexOf: (searchString: string) => getApiBaseUrl().indexOf(searchString),
+  [Symbol.toPrimitive]: () => getApiBaseUrl(),
+} as unknown as string;
+

@@ -29,11 +29,19 @@ public class CorsConfig implements WebMvcConfigurer {
 
     private List<String> getAllowedOriginPatterns() {
         List<String> patterns = new ArrayList<>(Arrays.asList(
-                "http://localhost:[*]",
-                "http://127.0.0.1:[*]",
-                "http://18.60.179.46:3000",
-                "http://18.60.179.46:[*]",
-                "https://18.60.179.46:[*]"
+                "http://localhost",
+                "http://localhost:*",
+                "https://localhost",
+                "https://localhost:*",
+                "http://127.0.0.1",
+                "http://127.0.0.1:*",
+                "https://127.0.0.1",
+                "https://127.0.0.1:*",
+                "http://18.60.179.46",
+                "http://18.60.179.46:*",
+                "https://18.60.179.46",
+                "https://18.60.179.46:*",
+                "*"
         ));
 
         if (StringUtils.hasText(allowedOriginsConfig)) {

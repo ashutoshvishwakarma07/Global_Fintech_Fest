@@ -77,7 +77,14 @@ public class UserService {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         String cleanSearch = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
 
-        Page<User> usersPage = userRepository.searchUsers(cleanSearch, role, active, pageable);
+        Page<User> usersPage;
+        if (cleanSearch != null) {
+            usersPage = userRepository.searchUsers(cleanSearch, role, active, pageable);
+        } else if (role != null || active != null) {
+            usersPage = userRepository.findAllByFilters(role, active, pageable);
+        } else {
+            usersPage = userRepository.findAll(pageable);
+        }
         return usersPage.map(UserDetailResponse::fromEntity);
     }
 

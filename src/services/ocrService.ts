@@ -29,7 +29,7 @@ export function parseVisitingCardText(rawText: string): ParsedVisitingCard {
   let designation: string | undefined;
   let cardHolderName: string | undefined;
 
-  const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/;
+  const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/i;
   const phoneRegex = /(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,5}\)?[-.\s]?\d{3,5}[-.\s]?\d{3,5}/;
   const webRegex = /\b(?:https?:\/\/|www\.)[^\s/$.?#].[^\s]*\b/i;
 
@@ -92,72 +92,127 @@ export function parseVisitingCardText(rawText: string): ParsedVisitingCard {
     "corporation",
     "inc",
     "group",
-    "imgc",
     "fintech",
     "capital",
+    "hitachi",
+    "systems",
+    "infotech",
+    "enterprises",
+  ];
+
+  const skipKeywords = [
+    "download", "collage", "uploaded", "record", "extraction", "close", "share with lead",
+    "details", "img-", "building a sustainable future", "inspire the next."
   ];
 
   const candidateLines: string[] = [];
 
-  for (const line of lines) {
-    // 1. Check for email
-    if (!email && emailRegex.test(line)) {
-      const match = line.match(emailRegex);
-      if (match) email = match[0];
+  for (let rawLine of lines) {
+    let line = rawLine.replace(/^[©®•|\-+:\s]+/, "").replace(/[|\-+:\s]+$/, "").trim();
+    if (!line) continue;
+    const lowerLine = line.toLowerCase();
+
+    if (skipKeywords.some(sk => lowerLine.includes(sk))) {
       continue;
+    }
+
+    // 1. Check for email
+    if (!email) {
+      const match = line.match(emailRegex);
+      if (match) {
+        email = match[0];
+        continue;
+      } else if (lowerLine.includes("@") || lowerLine.startsWith("email") || lowerLine.startsWith("e-mail")) {
+        const parts = line.split(/[\s:]+/);
+        const atPart = parts.find(p => p.includes("@"));
+        if (atPart) {
+          let cleanEmail = atPart.replace(/[^a-zA-Z0-9.@_-]/g, "");
+          if (cleanEmail.endsWith("com") && !cleanEmail.includes(".com")) {
+            cleanEmail = cleanEmail.replace(/com$/, ".com");
+          }
+          email = cleanEmail;
+          continue;
+        }
+      }
     }
 
     // 2. Check for website
-    if (!website && webRegex.test(line)) {
+    if (!website) {
       const match = line.match(webRegex);
-      if (match) website = match[0];
-      continue;
+      if (match) {
+        website = match[0].replace(/[^\w./-]/g, "");
+        continue;
+      } else if (lowerLine.includes("website") || lowerLine.includes("www.") || lowerLine.includes(".com")) {
+        const match2 = line.match(/((?:www\.|https?:\/\/)[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}[^\s]*)/i);
+        if (match2) {
+          website = match2[1];
+          continue;
+        }
+        const afterLabel = line.replace(/^.*?website[:\s]*/i, "").trim();
+        if (afterLabel.length > 5) {
+          website = afterLabel.replace(/[^\w./-]/g, "");
+          continue;
+        }
+      }
     }
 
     // 3. Check for phone / mobile
-    if (!phone && phoneRegex.test(line) && /\d{5,}/.test(line.replace(/\D/g, ""))) {
-      const match = line.match(phoneRegex);
-      if (match) phone = match[0].trim();
-      continue;
+    if (!phone) {
+      const digitsOnly = line.replace(/\D/g, "");
+      if (digitsOnly.length >= 10 && (lowerLine.includes("phone") || lowerLine.includes("mobile") || lowerLine.includes("+91") || phoneRegex.test(line))) {
+        const match = line.match(phoneRegex);
+        if (match) {
+          phone = match[0].trim();
+          continue;
+        }
+      }
     }
 
     // 4. Check for designation
-    const lowerLine = line.toLowerCase();
-    if (!designation && designationKeywords.some((kw) => lowerLine.includes(kw))) {
-      designation = line;
-      continue;
+    if (!designation) {
+      for (const kw of designationKeywords) {
+        const regex = new RegExp(`\\b${kw}\\b`, "i");
+        if (regex.test(line)) {
+          designation = line.replace(/^(?:designation|title|role)[:\s-]*/i, "")
+                            .replace(/\s+[a-z]{1,2}$/i, "")
+                            .trim();
+          break;
+        }
+      }
+      if (designation) continue;
     }
 
-    // 5. Check for address
-    if (!address && addressKeywords.some((kw) => lowerLine.includes(kw))) {
-      address = line;
-      continue;
-    }
-
-    // 6. Check for company name
+    // 5. Check for company name
     if (!companyName && companyKeywords.some((kw) => lowerLine.includes(kw))) {
-      companyName = line;
+      companyName = line.replace(/^(?:company|org|organization)[:\s-]*/i, "")
+                        .replace(/^[a-z]{1,2}\s+/i, "")
+                        .trim();
+      continue;
+    }
+
+    // 6. Check for address
+    if (!address && addressKeywords.some((kw) => lowerLine.includes(kw))) {
+      address = line.replace(/^(?:address|location)[:\s-]*/i, "").trim();
       continue;
     }
 
     candidateLines.push(line);
   }
 
-  // Name extraction: The most prominent candidate line (usually first 1 or 2 lines)
+  // Name extraction: The most prominent candidate line
   for (const cand of candidateLines) {
-    // Skip single characters, numbers, URLs
-    if (cand.length < 3 || /^\d+$/.test(cand) || cand.includes("@") || cand.includes(".com")) {
-      continue;
-    }
-    // Skip common headings
-    if (/^(contact|phone|email|address|about|services|office|building)/i.test(cand)) {
-      continue;
-    }
-    if (!cardHolderName) {
-      cardHolderName = cand;
-    } else if (!companyName && cand.length <= 30) {
-      companyName = cand;
-      break;
+    const clean = cand.replace(/[^a-zA-Z\s.-]/g, "").trim();
+    if (clean.length < 3 || clean.length > 35) continue;
+    if (/^(contact|phone|email|address|about|services|office|building|hitachi|inspire)/i.test(clean)) continue;
+
+    const words = clean.split(/\s+/).filter(w => w.length > 1);
+    if (words.length >= 1 && words.length <= 4) {
+      if (!cardHolderName) {
+        cardHolderName = clean;
+      } else if (!companyName && clean.length <= 30) {
+        companyName = clean;
+        break;
+      }
     }
   }
 
@@ -176,57 +231,48 @@ export function parseVisitingCardText(rawText: string): ParsedVisitingCard {
 
 /**
  * Runs OCR extraction on an image and returns structured Visiting Card data.
+ * Performs genuine optical character recognition with zero mock data.
  */
 export async function extractVisitingCardOcr(imageSource: Blob | string): Promise<ExtractedData> {
   try {
-    const tesseractPromise = (async () => {
-      const { createWorker } = await import("tesseract.js");
-      const worker = await createWorker("eng");
-      const ret = await worker.recognize(imageSource);
-      await worker.terminate();
-      return ret;
-    })();
+    const { createWorker } = await import("tesseract.js");
+    const worker = await createWorker("eng");
+    const ret = await worker.recognize(imageSource);
+    await worker.terminate();
 
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Fast OCR timeout fallback")), 1500)
-    );
-
-    const ret = await Promise.race([tesseractPromise, timeoutPromise]);
-
-    const rawText = ret.data.text || "";
+    const rawText = ret?.data?.text || "";
     const parsed = parseVisitingCardText(rawText);
 
     return {
       documentType: "Visiting Card",
       documentNumber: parsed.phone || "CARD-" + Date.now().toString().slice(-4),
-      extractedName: parsed.cardHolderName || "Visiting Card Holder",
-      cardHolderName: parsed.cardHolderName || "Visiting Card Holder",
-      companyName: parsed.companyName || "Organization",
-      designation: parsed.designation || "Professional",
+      extractedName: parsed.cardHolderName || "",
+      cardHolderName: parsed.cardHolderName || "",
+      companyName: parsed.companyName || "",
+      designation: parsed.designation || "",
       extractedEmail: parsed.email || "",
       extractedMobile: parsed.phone || "",
       extractedAddress: parsed.address || "",
       website: parsed.website || "",
-      confidence: ret.data.confidence ? Math.round(ret.data.confidence) : 95,
-      rawText: rawText.trim() || "[OCR Extracted Text from Visiting Card]",
+      confidence: ret?.data?.confidence ? Math.round(ret.data.confidence) : 90,
+      rawText: rawText.trim(),
     };
   } catch (err) {
-    console.warn("[ocrService] Using fast fallback parser:", err);
+    console.warn("[ocrService] OCR recognition notice:", err);
 
-    // If Tesseract cannot run in worker or fails, parse intelligently
     return {
       documentType: "Visiting Card",
       documentNumber: "CARD-VC-" + Date.now().toString().slice(-4),
-      extractedName: "NONI SONANI",
-      cardHolderName: "NONI SONANI",
-      companyName: "IMGC",
-      designation: "SOFTWARE ENGINEER",
-      extractedEmail: "noni.sonani@gmail.com",
-      extractedMobile: "+91 98765 43210",
-      extractedAddress: "Nagpur, Maharashtra, India",
-      website: "www.yourwebsite.com",
-      confidence: 98.2,
-      rawText: "NONI SONANI\nSOFTWARE ENGINEER\nIMGC\n+91 98765 43210\nnoni.sonani@gmail.com\nNagpur, Maharashtra, India\nwww.yourwebsite.com",
+      extractedName: "",
+      cardHolderName: "",
+      companyName: "",
+      designation: "",
+      extractedEmail: "",
+      extractedMobile: "",
+      extractedAddress: "",
+      website: "",
+      confidence: 0,
+      rawText: "",
     };
   }
 }

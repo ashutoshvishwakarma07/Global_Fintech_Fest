@@ -39,7 +39,7 @@ public class DynamicOcrService {
     private static final Pattern EMAIL_PATTERN = Pattern.compile("\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\\b");
     private static final Pattern PHONE_PATTERN = Pattern.compile("(?:\\+?\\d{1,3}[-\\s.]?)?\\(?\\d{3,5}\\)?[-\\s.]?\\d{3,5}[-\\s.]?\\d{3,5}");
     private static final Pattern DESIGNATION_PATTERN = Pattern.compile("(?i)\\b(software engineer|senior engineer|lead engineer|developer|architect|director|manager|vice president|vp|ceo|cto|cfo|founder|co-founder|consultant|analyst|specialist|officer|head|executive)\\b");
-    private static final Pattern COMPANY_PATTERN = Pattern.compile("(?i)\\b(technologies|solutions|services|systems|infotech|pvt|ltd|limited|inc|corp|corporation|group|bank|fintech|labs|imgc|qualtech)\\b");
+    private static final Pattern COMPANY_PATTERN = Pattern.compile("(?i)\\b(technologies|solutions|services|systems|infotech|pvt|ltd|limited|inc|corp|corporation|group|bank|fintech|labs|qualtech)\\b");
 
     @Value("${aws.s3.access-key:}")
     private String accessKey;

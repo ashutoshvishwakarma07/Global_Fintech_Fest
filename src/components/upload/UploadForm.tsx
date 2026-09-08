@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { User, UploadRecord, CaptureMode } from "@/types";
-import { mockUploadService } from "@/services/mockUploadService";
 import { apiService } from "@/services/apiService";
 import { imageProcessing } from "@/utils/imageProcessing";
 import {
@@ -19,6 +18,23 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 
+function formatTimestamp(date: Date = new Date()): { raw: string; display: string } {
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  const yyyy = date.getFullYear();
+  const mm = pad(date.getMonth() + 1);
+  const dd = pad(date.getDate());
+  const hh = pad(date.getHours());
+  const min = pad(date.getMinutes());
+
+  const raw = `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const hours12 = date.getHours() % 12 || 12;
+  const ampm = date.getHours() >= 12 ? "PM" : "AM";
+  const display = `${dd} ${months[date.getMonth()]} ${yyyy}, ${pad(hours12)}:${min} ${ampm}`;
+
+  return { raw, display };
+}
+
 interface UploadFormProps {
   user: User;
   imagePreviewUrl: string;
@@ -28,6 +44,7 @@ interface UploadFormProps {
   onCancel: () => void;
   onUploadSuccess: (record: UploadRecord) => void;
   onRetake: () => void;
+  nativeInputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
 export const UploadForm: React.FC<UploadFormProps> = ({
@@ -39,9 +56,13 @@ export const UploadForm: React.FC<UploadFormProps> = ({
   onCancel,
   onUploadSuccess,
   onRetake,
+  nativeInputRef,
 }) => {
   const [notes, setNotes] = useState("");
-  const [timestampInfo, setTimestampInfo] = useState({ raw: "", display: "" });
+  const [timestampInfo, setTimestampInfo] = useState<{ raw: string; display: string }>({
+    raw: "",
+    display: "",
+  });
   const [showSourceSides, setShowSourceSides] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,7 +71,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({
   const isTwoSided = captureMode === "two-sided";
 
   useEffect(() => {
-    const time = mockUploadService.formatTimestamp();
+    const time = formatTimestamp();
     setTimestampInfo(time);
   }, []);
 
@@ -72,8 +93,8 @@ export const UploadForm: React.FC<UploadFormProps> = ({
     try {
       // 1. Compress collage image to high-quality JPEG Blob for transmission
       const processed = await imageProcessing.compressToBlob(imagePreviewUrl, 1400, 0.88);
-      const nextId = mockUploadService.generateNextRecordId();
-      const displayTimestamp = timestampInfo.raw || mockUploadService.formatTimestamp().raw;
+      const nextId = "IMG-" + Math.floor(100000 + Math.random() * 900000);
+      const displayTimestamp = timestampInfo.raw || formatTimestamp().raw;
 
       // 2. Call IRIS API directly online with JSON base64 payload
       const response = await apiService.processDocumentWithIRIS({
@@ -95,19 +116,19 @@ export const UploadForm: React.FC<UploadFormProps> = ({
           uploadedBy: user.name,
           userId: user.id,
           email: user.email,
-          mobile: user.mobile || "9876543210",
+          mobile: user.mobile || "",
           role: user.role,
           uploadedAt: displayTimestamp,
           status: "Uploaded",
           notes: notes.trim() || (isTwoSided ? "Two-sided card verification submission" : "Field document capture submission"),
           fileSize: processed.sizeFormatted,
           extractedData: response.extractedData,
-          cardHolderName: response.extractedData?.cardHolderName || response.extractedData?.extractedName || "NONI SONANI",
-          companyName: response.extractedData?.companyName || "IMGC",
-          designation: response.extractedData?.designation || "SOFTWARE ENGINEER",
-          extractedEmail: response.extractedData?.extractedEmail || "noni.sonani@gmail.com",
-          extractedMobile: response.extractedData?.extractedMobile || "+91 98765 43210",
-          extractedAddress: response.extractedData?.extractedAddress || "Nagpur, Maharashtra, India",
+          cardHolderName: response.extractedData?.cardHolderName || response.extractedData?.extractedName || undefined,
+          companyName: response.extractedData?.companyName || undefined,
+          designation: response.extractedData?.designation || undefined,
+          extractedEmail: response.extractedData?.extractedEmail || undefined,
+          extractedMobile: response.extractedData?.extractedMobile || undefined,
+          extractedAddress: response.extractedData?.extractedAddress || undefined,
           rawOcrText: response.extractedData?.rawText,
           captureMode,
           frontImageUrl,
@@ -115,8 +136,6 @@ export const UploadForm: React.FC<UploadFormProps> = ({
           s3Url: response.s3Url,
         };
 
-        // Save into verified online records store
-        mockUploadService.saveRecord(uploadedRecord);
         onUploadSuccess(uploadedRecord);
       } else {
         throw new Error(response.message || "Unable to process the document. Please try again.");
@@ -145,7 +164,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({
         </button>
         <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-600">
           <Sparkles className="w-4 h-4 text-indigo-500" />
-          <span>IRIS OCR Verification</span>
+          <span>Document OCR Verification</span>
         </div>
       </div>
 
@@ -171,7 +190,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({
           {/* Mode Tag */}
           <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-indigo-600/90 backdrop-blur-md text-white text-[11px] font-bold flex items-center gap-1">
             {isTwoSided ? <Layers className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-            <span>{isTwoSided ? "Combined Two-Sided Document" : "Ready for IRIS OCR"}</span>
+            <span>{isTwoSided ? "Combined Two-Sided Document" : "Ready for OCR Extraction"}</span>
           </div>
         </div>
 
@@ -284,7 +303,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({
               <RefreshCw className={`w-4 h-4 ${isSubmitting ? "animate-spin" : ""}`} />
               <span>
                 {isSubmitting
-                  ? "Processing with IRIS API..."
+                  ? "Processing with OCR API..."
                   : isTwoSided
                   ? "Submit Combined Document & Extract OCR"
                   : "Submit & Extract OCR Data"}

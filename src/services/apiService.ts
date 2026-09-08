@@ -168,7 +168,7 @@ export const apiService = {
   },
 
   /**
-   * Calls IRIS API to process captured document and extract structured KYC fields.
+   * Calls OCR API to process captured document and extract structured KYC fields.
    */
   async processDocumentWithIRIS(payload: IrisUploadPayload): Promise<IrisApiResponse> {
     if (typeof navigator !== "undefined" && !navigator.onLine) {
@@ -203,7 +203,7 @@ export const apiService = {
     };
 
     if (process.env.NODE_ENV !== "production") {
-      console.log("[IRIS API] Submitting JSON Document Payload:", {
+      console.log("[OCR API] Submitting JSON Document Payload:", {
         appID: irisJsonRequest.appID,
         entityRef: irisJsonRequest.entityRef,
         documentRef: irisJsonRequest.documentRef,
@@ -213,26 +213,26 @@ export const apiService = {
     }
 
     if (typeof navigator !== "undefined" && !navigator.onLine) {
-      throw new Error("Network connection dropped during IRIS document upload transmission.");
+      throw new Error("Network connection dropped during document upload transmission.");
     }
 
     let extractedData: ExtractedData;
     try {
       extractedData = await extractVisitingCardOcr(payload.imageBlob || base64Data || "");
-    } catch {
+    } catch (ocrErr) {
+      console.warn("[apiService] Local OCR Notice:", ocrErr);
       extractedData = {
         documentType: "Visiting Card",
         documentNumber: "VC-" + payload.recordId,
-        extractedName: "NONI SONANI",
-        cardHolderName: "NONI SONANI",
-        companyName: "IMGC",
-        designation: "SOFTWARE ENGINEER",
-        extractedEmail: "noni.sonani@gmail.com",
-        extractedMobile: "+91 98765 43210",
-        extractedAddress: "Nagpur, Maharashtra, India",
-        website: "www.yourwebsite.com",
-        confidence: 98.5,
-        rawText: "NONI SONANI\nSOFTWARE ENGINEER\nIMGC\n+91 98765 43210\nnoni.sonani@gmail.com\nNagpur, Maharashtra, India\nwww.yourwebsite.com",
+        cardHolderName: "",
+        companyName: "",
+        designation: "",
+        extractedEmail: "",
+        extractedMobile: "",
+        extractedAddress: "",
+        website: "",
+        confidence: 0,
+        rawText: "",
       };
     }
 
@@ -269,10 +269,27 @@ export const apiService = {
       if (response.ok) {
         const resJson = await response.json();
         if (resJson.data?.imageUrl) {
-          s3Url = resJson.data.imageUrl;
-          serverUrl = resJson.data.imageUrl;
+          let resolved = resJson.data.imageUrl;
+          if (resolved.startsWith("/api/v1")) {
+            const origin = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
+            resolved = `${origin}${resolved}`;
+          } else if (resolved.startsWith("/")) {
+            resolved = `${API_BASE_URL}${resolved}`;
+          }
+          s3Url = resolved;
+          serverUrl = resolved;
         }
-        console.log("[apiService] Uploaded to Spring Boot & AWS S3 successfully:", resJson);
+        if (resJson.data) {
+          const d = resJson.data;
+          if (d.cardHolderName) extractedData.cardHolderName = d.cardHolderName;
+          if (d.companyName) extractedData.companyName = d.companyName;
+          if (d.designation) extractedData.designation = d.designation;
+          if (d.extractedEmail) extractedData.extractedEmail = d.extractedEmail;
+          if (d.extractedMobile) extractedData.extractedMobile = d.extractedMobile;
+          if (d.extractedAddress) extractedData.extractedAddress = d.extractedAddress;
+          if (d.rawOcrText) extractedData.rawText = d.rawOcrText;
+        }
+        console.log("[apiService] Uploaded to Spring Boot & PostgreSQL successfully:", resJson);
       }
     } catch (backendErr) {
       console.warn("[apiService] Backend upload notice:", backendErr);
@@ -294,7 +311,7 @@ export const apiService = {
       s3Url,
       uploadedAt: payload.timestamp,
       extractedData,
-      message: "Document processed and photo uploaded to AWS S3 via Spring Boot",
+      message: "Document processed and photo uploaded to database via Spring Boot",
     };
   },
 
@@ -326,6 +343,58 @@ export const apiService = {
       return json.data;
     } catch {
       return null;
+    }
+  },
+
+  /**
+   * Fetch all documents for current user from PostgreSQL database mapped to UploadRecord[]
+   */
+  async getLiveRecords(user: User, query = "", status?: string): Promise<UploadRecord[]> {
+    try {
+      const data = await this.fetchDocuments(user.email, user.role, query, status);
+      if (!data) return [];
+      const content = Array.isArray(data.content) ? data.content : Array.isArray(data) ? data : [];
+      return content.map((doc: any): UploadRecord => ({
+        id: doc.recordId,
+        numericId: doc.id,
+        imageUrl: doc.imageUrl?.startsWith("/api/v1")
+          ? `${API_BASE_URL.replace(/\/api\/v1\/?$/, "")}${doc.imageUrl}`
+          : doc.imageUrl || (doc.recordId ? `${API_BASE_URL}/documents/record/${doc.recordId}/image` : ""),
+        uploadedBy: doc.uploaderName || doc.uploaderEmail || "Unknown",
+        userId: doc.uploaderEmail || "user",
+        email: doc.uploaderEmail || "",
+        mobile: doc.uploaderMobile || "",
+        role: normalizeUserRole(doc.uploaderRole),
+        uploadedAt: doc.createdAt ? doc.createdAt.replace("T", " ").substring(0, 16) : "",
+        status: doc.status === "VERIFIED" ? "Verified" : doc.status === "FAILED" ? "Failed" : "Uploaded",
+        ocrStatus: doc.ocrStatus || "PENDING",
+        notes: doc.notes || "",
+        fileSize: doc.fileSize || "1.2 MB",
+        cardHolderName: doc.cardHolderName || undefined,
+        companyName: doc.companyName || undefined,
+        designation: doc.designation || undefined,
+        extractedEmail: doc.extractedEmail || undefined,
+        extractedMobile: doc.extractedMobile || undefined,
+        extractedAddress: doc.extractedAddress || undefined,
+        rawOcrText: doc.rawOcrText || undefined,
+        extractedData: {
+          documentType: "Visiting Card",
+          documentNumber: doc.recordId,
+          cardHolderName: doc.cardHolderName || undefined,
+          extractedName: doc.cardHolderName || undefined,
+          companyName: doc.companyName || undefined,
+          designation: doc.designation || undefined,
+          extractedEmail: doc.extractedEmail || undefined,
+          extractedMobile: doc.extractedMobile || undefined,
+          extractedAddress: doc.extractedAddress || undefined,
+          rawText: doc.rawOcrText || undefined,
+          confidence: doc.ocrStatus === "COMPLETED" ? 97 : 80,
+        },
+        s3Url: doc.imageUrl || undefined,
+      }));
+    } catch (err) {
+      console.error("[apiService] getLiveRecords error:", err);
+      return [];
     }
   },
 

@@ -51,8 +51,11 @@ public class DocumentResponse {
         response.setUploaderName(card.getUploaderName());
         response.setUploaderEmail(card.getUploaderEmail());
         response.setUploaderMobile(card.getUploaderMobile());
-        response.setUploaderRole(card.getUploaderRole());
-        response.setImageUrl(card.getImageUrl());
+        String img = card.getImageUrl();
+        if (img == null || img.trim().isEmpty()) {
+            img = "/api/v1/documents/record/" + card.getRecordId() + "/image";
+        }
+        response.setImageUrl(img);
         response.setS3Key(card.getS3Key());
         response.setS3Bucket(card.getS3Bucket());
         response.setFileName(card.getFileName());
