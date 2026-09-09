@@ -35,11 +35,20 @@ public class EmailService {
     @Autowired(required = false)
     private JavaMailSender mailSender;
 
-    @Value("${app.mail.lead-email:jyoti.sonani@qualtechedge.com,ashutosh.vishwakarma@qualtechedge.com}")
+    @Value("${app.mail.lead-email:aksh.sinha@qualtechedge.com,manish.kankani@qualtechedge.com,ashish.srivastava@qualtechedge.com}")
     private String leadEmailsConfig;
 
-    @Value("${app.mail.from-email:jyotilakhidhar96@gmail.com}")
+    @Value("${app.mail.cc-email:naveen.kumar1@qualtechedge.com,amit.sethia@qualtechedge.com}")
+    private String ccEmailsConfig;
+
+    @Value("${app.mail.from-email:alert@qualtechedge.com}")
     private String fromEmail;
+
+    @Value("${spring.mail.host:smtp.bizmail.yahoo.com}")
+    private String smtpHost;
+
+    @Value("${spring.mail.port:587}")
+    private int smtpPort;
 
     @Value("${spring.mail.username:}")
     private String smtpUsername;
@@ -85,12 +94,19 @@ public class EmailService {
         // Always save a persistent copy to disk for safety and inspection
         saveReportBackupToDisk(excelBytes, attachmentFileName);
 
-        String[] recipients = Arrays.stream(leadEmailsConfig.split(","))
+        String[] toRecipients = Arrays.stream(leadEmailsConfig.split(","))
                 .map(String::trim)
                 .filter(email -> !email.isEmpty())
                 .toArray(String[]::new);
 
-        if (recipients.length == 0) {
+        String[] ccRecipients = ccEmailsConfig != null
+                ? Arrays.stream(ccEmailsConfig.split(","))
+                        .map(String::trim)
+                        .filter(email -> !email.isEmpty())
+                        .toArray(String[]::new)
+                : new String[0];
+
+        if (toRecipients.length == 0) {
             log.warn("No recipient emails configured in app.mail.lead-email.");
             return "SKIPPED: No recipient emails configured";
         }
@@ -109,7 +125,10 @@ public class EmailService {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
             helper.setFrom(fromEmail);
-            helper.setTo(recipients);
+            helper.setTo(toRecipients);
+            if (ccRecipients.length > 0) {
+                helper.setCc(ccRecipients);
+            }
 
             String subject = "[%s] OCR Processing & Upload Summary - %s".formatted(reportType, dateStr);
             helper.setSubject(subject);
@@ -124,29 +143,35 @@ public class EmailService {
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             );
 
-            log.info("Sending {} email to: {} with attachment {}", reportType, Arrays.toString(recipients), attachmentFileName);
+            log.info("Sending {} email to TO: {}, CC: {} with attachment {}", reportType, Arrays.toString(toRecipients), Arrays.toString(ccRecipients), attachmentFileName);
             mailSender.send(message);
-            log.info("{} email successfully delivered to {}", reportType, Arrays.toString(recipients));
+            log.info("{} email successfully delivered to TO: {}, CC: {}", reportType, Arrays.toString(toRecipients), Arrays.toString(ccRecipients));
 
-            return "SUCCESS: Email delivered to " + String.join(", ", recipients);
+            return "SUCCESS: Email delivered to " + String.join(", ", toRecipients);
 
         } catch (MessagingException e) {
             log.error("Failed to construct MimeMessage for report: {}", e.getMessage(), e);
             return "ERROR: MessagingException - " + e.getMessage();
         } catch (Exception e) {
-            log.warn("Standard JavaMailSender encountered issue: {}. Activating resilient direct SMTP channel with SNI bypass...", e.getMessage());
-            return sendDirectSmtp(message, recipients, attachmentFileName);
+            log.warn("Standard JavaMailSender encountered issue: {}. Activating resilient direct SMTP channel...", e.getMessage());
+            return sendDirectSmtp(message, toRecipients, ccRecipients, attachmentFileName);
         }
+    }
+
+    private String sendDirectSmtp(MimeMessage message, String[] recipients, String attachmentFileName) {
+        return sendDirectSmtp(message, recipients, null, attachmentFileName);
     }
 
     /**
      * Resilient SMTP delivery that bypasses endpoint security TLS socket aborts
-     * by establishing a direct STARTTLS channel with neutral SNI hostname.
+     * by establishing a direct STARTTLS channel with the configured SMTP host.
      */
-    private String sendDirectSmtp(MimeMessage message, String[] recipients, String attachmentFileName) {
+    private String sendDirectSmtp(MimeMessage message, String[] toRecipients, String[] ccRecipients, String attachmentFileName) {
+        String host = (smtpHost != null && !smtpHost.isBlank()) ? smtpHost.trim() : "smtp.bizmail.yahoo.com";
+        int port = smtpPort > 0 ? smtpPort : 587;
         try {
-            log.info("Connecting to smtp.gmail.com:587 via resilient direct channel...");
-            try (java.net.Socket socket = new java.net.Socket("smtp.gmail.com", 587)) {
+            log.info("Connecting to {}:{} via resilient direct channel...", host, port);
+            try (java.net.Socket socket = new java.net.Socket(host, port)) {
                 java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(socket.getInputStream(), java.nio.charset.StandardCharsets.UTF_8));
                 java.io.BufferedWriter writer = new java.io.BufferedWriter(new java.io.OutputStreamWriter(socket.getOutputStream(), java.nio.charset.StandardCharsets.UTF_8));
 
@@ -172,7 +197,7 @@ public class EmailService {
                 }, null);
 
                 javax.net.ssl.SSLSocketFactory factory = sslContext.getSocketFactory();
-                javax.net.ssl.SSLSocket sslSocket = (javax.net.ssl.SSLSocket) factory.createSocket(socket, "google.com", 587, true);
+                javax.net.ssl.SSLSocket sslSocket = (javax.net.ssl.SSLSocket) factory.createSocket(socket, host, port, true);
                 sslSocket.startHandshake();
 
                 java.io.BufferedReader sslReader = new java.io.BufferedReader(new java.io.InputStreamReader(sslSocket.getInputStream(), java.nio.charset.StandardCharsets.UTF_8));
@@ -188,7 +213,7 @@ public class EmailService {
                 sslWriter.flush();
                 sslReader.readLine();
 
-                String userClean = (smtpUsername != null ? smtpUsername : fromEmail).trim();
+                String userClean = (smtpUsername != null && !smtpUsername.isBlank() ? smtpUsername : fromEmail).trim();
                 String passClean = (smtpPassword != null ? smtpPassword.replaceAll("\\s+", "") : "").trim();
 
                 sslWriter.write(java.util.Base64.getEncoder().encodeToString(userClean.getBytes(java.nio.charset.StandardCharsets.UTF_8)) + "\r\n");
@@ -207,8 +232,20 @@ public class EmailService {
                 sslWriter.flush();
                 sslReader.readLine();
 
-                for (String recipient : recipients) {
-                    sslWriter.write("RCPT TO:<" + recipient.trim() + ">\r\n");
+                List<String> allRecipients = new java.util.ArrayList<>();
+                if (toRecipients != null) {
+                    for (String r : toRecipients) {
+                        if (r != null && !r.isBlank()) allRecipients.add(r.trim());
+                    }
+                }
+                if (ccRecipients != null) {
+                    for (String r : ccRecipients) {
+                        if (r != null && !r.isBlank()) allRecipients.add(r.trim());
+                    }
+                }
+
+                for (String recipient : allRecipients) {
+                    sslWriter.write("RCPT TO:<" + recipient + ">\r\n");
                     sslWriter.flush();
                     sslReader.readLine();
                 }
@@ -228,8 +265,8 @@ public class EmailService {
                 sslWriter.flush();
 
                 if (sendResp != null && sendResp.startsWith("250")) {
-                    log.info("Daily OCR Report email successfully delivered via resilient channel to {}", Arrays.toString(recipients));
-                    return "SUCCESS: Delivered to " + String.join(", ", recipients);
+                    log.info("Daily OCR Report email successfully delivered via resilient channel to TO: {}, CC: {}", Arrays.toString(toRecipients), Arrays.toString(ccRecipients));
+                    return "SUCCESS: Delivered to " + String.join(", ", allRecipients);
                 } else {
                     throw new java.io.IOException("SMTP server returned non-250 response: " + sendResp);
                 }
