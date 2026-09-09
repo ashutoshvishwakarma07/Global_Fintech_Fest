@@ -11,6 +11,19 @@ export interface ProcessedImage {
   sizeFormatted: string;
 }
 
+export const ALLOWED_FILE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".doc", ".docx", ".pdf"];
+export const ALLOWED_MIME_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+  "image/pjpeg",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
+
+export const ACCEPTED_FILE_INPUT_TYPES = ".png,.jpg,.jpeg,.doc,.docx,.pdf,image/png,image/jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
 export const imageProcessing = {
   formatFileSize(bytes: number): string {
     if (bytes === 0) return "0 Bytes";
@@ -20,29 +33,77 @@ export const imageProcessing = {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   },
 
-  validateImage(file: File): { valid: boolean; error?: string } {
-    const validTypes = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/jpg"];
-    if (!validTypes.includes(file.type.toLowerCase()) && !file.type.startsWith("image/")) {
-      return { valid: false, error: "Invalid file format. Please choose a JPG, PNG, or WEBP image." };
+  validateFile(file: File): { valid: boolean; error?: string } {
+    const fileName = (file.name || "").toLowerCase();
+    const extMatch = ALLOWED_FILE_EXTENSIONS.some((ext) => fileName.endsWith(ext));
+    const mimeMatch = ALLOWED_MIME_TYPES.includes(file.type.toLowerCase());
+
+    if (!extMatch && !mimeMatch) {
+      return {
+        valid: false,
+        error: "Unsupported file format. Only PNG, JPG/JPEG, Word (.doc, .docx), and PDF files are allowed.",
+      };
     }
 
     const maxSize = 25 * 1024 * 1024; // 25MB
     if (file.size > maxSize) {
-      return { valid: false, error: "Image file exceeds 25MB limit. Please select a smaller photo." };
+      return { valid: false, error: "File size exceeds 25MB limit. Please select a smaller file." };
     }
 
     return { valid: true };
   },
 
+  validateImage(file: File): { valid: boolean; error?: string } {
+    return this.validateFile(file);
+  },
+
+  isDocumentFile(src: string): boolean {
+    const lower = src.toLowerCase();
+    return (
+      lower.startsWith("data:application/pdf") ||
+      lower.startsWith("data:application/msword") ||
+      lower.startsWith("data:application/vnd") ||
+      lower.endsWith(".pdf") ||
+      lower.endsWith(".doc") ||
+      lower.endsWith(".docx")
+    );
+  },
+
   /**
    * Compresses an image source (File, Blob, or Data URL) into a high-quality JPEG Blob
-   * constrained to maxDimension (default 1200px) and quality (default 0.8)
+   * constrained to maxDimension (default 1200px) and quality (default 0.8).
+   * If source is PDF/DOC, returns the blob directly without canvas conversion.
    */
   async compressToBlob(
     source: File | Blob | string,
     maxDimension = 1200,
     quality = 0.8
   ): Promise<ProcessedImage> {
+    // If source is a document (PDF / Word), handle as raw Blob
+    if (typeof source === "string" && this.isDocumentFile(source)) {
+      const res = await fetch(source);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      return {
+        blob,
+        blobUrl,
+        width: 0,
+        height: 0,
+        sizeFormatted: this.formatFileSize(blob.size),
+      };
+    }
+
+    if (source instanceof Blob && !source.type.startsWith("image/")) {
+      const blobUrl = URL.createObjectURL(source);
+      return {
+        blob: source,
+        blobUrl,
+        width: 0,
+        height: 0,
+        sizeFormatted: this.formatFileSize(source.size),
+      };
+    }
+
     return new Promise((resolve, reject) => {
       let objectUrlToRevoke: string | null = null;
       let src = "";
@@ -59,6 +120,7 @@ export const imageProcessing = {
         if (objectUrlToRevoke) {
           URL.revokeObjectURL(objectUrlToRevoke);
         }
+
 
         let { width, height } = img;
         if (width > maxDimension || height > maxDimension) {

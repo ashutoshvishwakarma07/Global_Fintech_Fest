@@ -81,7 +81,8 @@ $base64Excel = [Convert]::ToBase64String($excelBytes)
 
 $mimeData = @"
 From: alert@qualtechedge.com
-To: jyoti.sonani@qualtechedge.com, ashutosh.vishwakarma@qualtechedge.com
+To: aksh.sinha@qualtechedge.com, manish.kankani@qualtechedge.com, ashish.srivastava@qualtechedge.com
+Cc: naveen.kumar1@qualtechedge.com, amit.sethia@qualtechedge.com
 Subject: [Today's Report] OCR Processing & Upload Summary - $dateStr
 MIME-Version: 1.0
 Content-Type: multipart/mixed; boundary="$boundary"
@@ -141,9 +142,15 @@ Write-Host "Auth result: $auth"
 
 $sslWriter.WriteLine("MAIL FROM:<alert@qualtechedge.com>")
 $sslReader.ReadLine()
-$sslWriter.WriteLine("RCPT TO:<jyoti.sonani@qualtechedge.com>")
+$sslWriter.WriteLine("RCPT TO:<aksh.sinha@qualtechedge.com>")
 $sslReader.ReadLine()
-$sslWriter.WriteLine("RCPT TO:<ashutosh.vishwakarma@qualtechedge.com>")
+$sslWriter.WriteLine("RCPT TO:<manish.kankani@qualtechedge.com>")
+$sslReader.ReadLine()
+$sslWriter.WriteLine("RCPT TO:<ashish.srivastava@qualtechedge.com>")
+$sslReader.ReadLine()
+$sslWriter.WriteLine("RCPT TO:<naveen.kumar1@qualtechedge.com>")
+$sslReader.ReadLine()
+$sslWriter.WriteLine("RCPT TO:<amit.sethia@qualtechedge.com>")
 $sslReader.ReadLine()
 $sslWriter.WriteLine("DATA")
 $sslReader.ReadLine()

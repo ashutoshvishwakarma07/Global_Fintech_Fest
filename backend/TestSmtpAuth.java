@@ -64,9 +64,11 @@ public class TestSmtpAuth {
         sslWriter.flush();
         System.out.println("MAIL FROM: " + sslReader.readLine());
         
-        // Production: aksh.sinha@qualtechedge.com, manish.kankani@qualtechedge.com, ashish.srivastava@qualtechedge.com | CC: naveen.kumar1@qualtechedge.com, amit.sethia@qualtechedge.com
+        // Production:
         String[] recipients = {
-            "jyoti.sonani@qualtechedge.com", "ashutosh.vishwakarma@qualtechedge.com"
+            "aksh.sinha@qualtechedge.com", "manish.kankani@qualtechedge.com", "ashish.srivastava@qualtechedge.com",
+            "naveen.kumar1@qualtechedge.com", "amit.sethia@qualtechedge.com"
+            // Test mode: "jyoti.sonani@qualtechedge.com", "ashutosh.vishwakarma@qualtechedge.com"
         };
         for (String rcpt : recipients) {
             sslWriter.write("RCPT TO:<" + rcpt + ">\r\n");
@@ -79,7 +81,8 @@ public class TestSmtpAuth {
         System.out.println("DATA: " + sslReader.readLine());
         
         sslWriter.write("From: alert@qualtechedge.com\r\n");
-        sslWriter.write("To: jyoti.sonani@qualtechedge.com, ashutosh.vishwakarma@qualtechedge.com\r\n");
+        sslWriter.write("To: aksh.sinha@qualtechedge.com, manish.kankani@qualtechedge.com, ashish.srivastava@qualtechedge.com\r\n");
+        sslWriter.write("Cc: naveen.kumar1@qualtechedge.com, amit.sethia@qualtechedge.com\r\n");
         sslWriter.write("Subject: GFF OCR Automated Test Email\r\n");
         sslWriter.write("\r\n");
         sslWriter.write("Hello, this is an automated test from GFF backend.\r\n");

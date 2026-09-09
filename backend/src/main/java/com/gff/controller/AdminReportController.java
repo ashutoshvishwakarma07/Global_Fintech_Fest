@@ -49,7 +49,7 @@ public class AdminReportController {
     }
 
     /**
-     * All Reports trigger endpoint:
+     * Consolidated Reports trigger endpoint:
      * Queries all records where ocr_status = COMPLETED (no date filter), aggregates user-wise counts, generates Excel, and emails report.
      *
      * URL: POST /api/v1/admin/reports/trigger-all
@@ -59,12 +59,12 @@ public class AdminReportController {
         try {
             Map<String, Object> result = dailyOcrReportScheduler.runAllReportsWorkflow();
             if ("ERROR".equals(result.get("status"))) {
-                return ResponseEntity.ok(ApiResponse.success("All Reports OCR Workflow executed with notices", result));
+                return ResponseEntity.ok(ApiResponse.success("Consolidated Reports OCR Workflow executed with notices", result));
             }
-            return ResponseEntity.ok(ApiResponse.success("All Reports OCR Workflow triggered successfully", result));
+            return ResponseEntity.ok(ApiResponse.success("Consolidated Reports OCR Workflow triggered successfully", result));
         } catch (Throwable t) {
             Map<String, Object> errResult = Map.of("status", "ERROR", "errorMessage", t.getMessage() != null ? t.getMessage() : t.toString());
-            return ResponseEntity.ok(ApiResponse.success("All Reports OCR Workflow completed with warning", errResult));
+            return ResponseEntity.ok(ApiResponse.success("Consolidated Reports OCR Workflow completed with warning", errResult));
         }
     }
 

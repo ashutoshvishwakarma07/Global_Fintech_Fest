@@ -35,13 +35,16 @@ public class EmailService {
     @Autowired(required = false)
     private JavaMailSender mailSender;
 
-    // Production defaults: aksh.sinha@qualtechedge.com,manish.kankani@qualtechedge.com,ashish.srivastava@qualtechedge.com
-    // Production CC defaults: naveen.kumar1@qualtechedge.com,amit.sethia@qualtechedge.com
-    @Value("${app.mail.lead-email:jyoti.sonani@qualtechedge.com,ashutosh.vishwakarma@qualtechedge.com}")
+    // --- PRODUCTION RECIPIENTS (Active) ---
+    @Value("${app.mail.lead-email:aksh.sinha@qualtechedge.com,manish.kankani@qualtechedge.com,ashish.srivastava@qualtechedge.com}")
     private String leadEmailsConfig;
 
-    @Value("${app.mail.cc-email:}")
+    @Value("${app.mail.cc-email:naveen.kumar1@qualtechedge.com,amit.sethia@qualtechedge.com}")
     private String ccEmailsConfig;
+
+    // --- TEST RECIPIENTS (Commented out for later) ---
+    // @Value("${app.mail.lead-email:jyoti.sonani@qualtechedge.com,ashutosh.vishwakarma@qualtechedge.com}")
+    // @Value("${app.mail.cc-email:}")
 
     @Value("${app.mail.from-email:alert@qualtechedge.com}")
     private String fromEmail;
@@ -52,10 +55,10 @@ public class EmailService {
     @Value("${spring.mail.port:587}")
     private int smtpPort;
 
-    @Value("${spring.mail.username:}")
+    @Value("${spring.mail.username:alert@qualtechedge.com}")
     private String smtpUsername;
 
-    @Value("${spring.mail.password:}")
+    @Value("${spring.mail.password:wgcdoupsprrenrjg}")
     private String smtpPassword;
 
     /**

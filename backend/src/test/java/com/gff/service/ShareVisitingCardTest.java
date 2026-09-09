@@ -36,6 +36,9 @@ class ShareVisitingCardTest {
     private DynamicOcrService dynamicOcrService;
 
     @Mock
+    private IrisService irisService;
+
+    @Mock
     private EmailService emailService;
 
     @Mock
@@ -52,6 +55,7 @@ class ShareVisitingCardTest {
                 visitingCardRepository,
                 s3Service,
                 dynamicOcrService,
+                irisService,
                 emailService,
                 cardShareAuditRepository
         );

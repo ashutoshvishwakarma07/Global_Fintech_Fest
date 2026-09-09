@@ -181,13 +181,15 @@ export const apiService = {
     }
 
     const irisJsonRequest = {
-      appID: "APP-GFF-FIELD-01",
-      entityType: "USER",
-      entityRef: payload.user.email,
+      appID: "APP001",
+      entityType: "applicant",
+      entityRef: "ENT-1001",
+      documentName: "Visiting Card",
       documentRef: payload.recordId,
+      userID: payload.user.email,
       files: [
         {
-          fileObjectRef: payload.imageName,
+          fileObjectRef: payload.imageName || "visiting_card.jpg",
           fileObject: base64Data || "data:image/jpeg;base64,mockEncodedPayload",
         },
       ],
@@ -205,6 +207,7 @@ export const apiService = {
     if (process.env.NODE_ENV !== "production") {
       console.log("[OCR API] Submitting JSON Document Payload:", {
         appID: irisJsonRequest.appID,
+        entityType: irisJsonRequest.entityType,
         entityRef: irisJsonRequest.entityRef,
         documentRef: irisJsonRequest.documentRef,
         fileRef: irisJsonRequest.files[0]?.fileObjectRef,
@@ -270,27 +273,6 @@ export const apiService = {
           notes: payload.notes || "",
           imageBase64: base64Data,
           isOffline: false,
-          // 14 Standardized Fields
-          name: extractedData?.name || extractedData?.cardHolderName || extractedData?.extractedName || null,
-          cardHolderName: extractedData?.name || extractedData?.cardHolderName || extractedData?.extractedName || null,
-          jobTitle: extractedData?.jobTitle || extractedData?.designation || null,
-          designation: extractedData?.jobTitle || extractedData?.designation || null,
-          companyName: extractedData?.companyName || null,
-          department: extractedData?.department || null,
-          emailAddress: extractedData?.emailAddress || extractedData?.extractedEmail || null,
-          extractedEmail: extractedData?.emailAddress || extractedData?.extractedEmail || null,
-          mobileNumber: extractedData?.mobileNumber || extractedData?.extractedMobile || null,
-          extractedMobile: extractedData?.mobileNumber || extractedData?.extractedMobile || null,
-          workNumber: extractedData?.workNumber || null,
-          websiteUrl: extractedData?.websiteUrl || extractedData?.website || null,
-          city: extractedData?.city || null,
-          state: extractedData?.state || null,
-          postalZipCode: extractedData?.postalZipCode || null,
-          country: extractedData?.country || null,
-          linkedIn: extractedData?.linkedIn || null,
-          twitter: extractedData?.twitter || null,
-          extractedAddress: extractedData?.extractedAddress || null,
-          rawOcrText: extractedData?.rawText || "",
         }),
       });
 
@@ -338,7 +320,7 @@ export const apiService = {
         if (d.extractedAddress) extractedData.extractedAddress = d.extractedAddress;
         if (d.rawOcrText) extractedData.rawText = d.rawOcrText;
       }
-      console.log("[apiService] Uploaded to Spring Boot & AWS S3 successfully:", resJson);
+      console.log("[apiService] Uploaded to Spring Boot & AWS S3 with IRIS AI extraction:", resJson);
     } catch (backendErr: any) {
       console.error("[apiService] Backend S3 upload failure:", backendErr);
       throw backendErr;
@@ -850,7 +832,7 @@ export const apiService = {
   },
 
   /**
-   * Admin API: Trigger All Reports (queries all records with ocr_status = COMPLETED without date filter, generates Excel, emails report).
+   * Admin API: Trigger Consolidated Reports (queries all records with ocr_status = COMPLETED without date filter, generates Excel, emails report).
    * Calls POST /api/v1/admin/reports/trigger-all
    */
   async triggerAllReportsEmail(): Promise<{
@@ -873,12 +855,12 @@ export const apiService = {
 
       const json = await response.json().catch(() => ({}));
       if (!response.ok || !json.success) {
-        throw new Error(json.message || `Failed to trigger All Reports: HTTP ${response.status}`);
+        throw new Error(json.message || `Failed to trigger Consolidated Reports: HTTP ${response.status}`);
       }
 
       return {
         success: true,
-        message: json.message || "Consolidated Report (All Completed OCR) & Email dispatched successfully",
+        message: json.message || "Consolidated Reports (All Completed OCR) & Email dispatched successfully",
         data: json.data,
       };
     } catch (err: any) {

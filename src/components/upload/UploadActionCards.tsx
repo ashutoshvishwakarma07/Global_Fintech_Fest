@@ -5,6 +5,7 @@ import { Camera, ImageUp, Sparkles, Layers, FileText } from "lucide-react";
 import { TwoSideCapture } from "./TwoSideCapture";
 import { CollageResult } from "@/services/collageService";
 import { CaptureMode } from "@/types";
+import { imageProcessing, ACCEPTED_FILE_INPUT_TYPES } from "@/utils/imageProcessing";
 
 interface UploadActionCardsProps {
   onOpenCamera: (target?: "single" | "front" | "back") => void;
@@ -31,6 +32,12 @@ export const UploadActionCards: React.FC<UploadActionCardsProps> = ({
   const handleGalleryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      const validation = imageProcessing.validateFile(file);
+      if (!validation.valid) {
+        alert(validation.error || "Unsupported file format. Please upload PNG, JPG/JPEG, Word (.doc, .docx), or PDF files only.");
+        e.target.value = "";
+        return;
+      }
       onSelectImage(file);
       e.target.value = "";
     }
@@ -39,6 +46,12 @@ export const UploadActionCards: React.FC<UploadActionCardsProps> = ({
   const handleNativeCameraChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      const validation = imageProcessing.validateFile(file);
+      if (!validation.valid) {
+        alert(validation.error || "Unsupported file format.");
+        e.target.value = "";
+        return;
+      }
       onDirectCameraInput(file);
       e.target.value = "";
     }
@@ -50,14 +63,14 @@ export const UploadActionCards: React.FC<UploadActionCardsProps> = ({
       <input
         ref={galleryInputRef}
         type="file"
-        accept="image/*"
+        accept={ACCEPTED_FILE_INPUT_TYPES}
         onChange={handleGalleryChange}
         className="hidden"
       />
       <input
         ref={nativeCameraInputRef}
         type="file"
-        accept="image/*"
+        accept={ACCEPTED_FILE_INPUT_TYPES}
         capture="environment"
         onChange={handleNativeCameraChange}
         className="hidden"

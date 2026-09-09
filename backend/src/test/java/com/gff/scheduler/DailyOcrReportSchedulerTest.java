@@ -125,13 +125,13 @@ class DailyOcrReportSchedulerTest {
         when(visitingCardRepository.findByOcrStatus(OcrStatus.COMPLETED)).thenReturn(List.of(card1, card2));
 
         byte[] fakeExcel = new byte[]{4, 5, 6};
-        when(excelReportService.generateReport(any(), eq("All Records OCR Report (Completed)"), any(), any(), any())).thenReturn(fakeExcel);
-        when(emailService.sendReport(eq("All Reports"), eq(fakeExcel), any(), any(), any(), any(), any())).thenReturn("SUCCESS: Email delivered");
+        when(excelReportService.generateReport(any(), eq("Consolidated Records OCR Report (Completed)"), any(), any(), any())).thenReturn(fakeExcel);
+        when(emailService.sendReport(eq("Consolidated Reports"), eq(fakeExcel), any(), any(), any(), any(), any())).thenReturn("SUCCESS: Email delivered");
 
         Map<String, Object> result = scheduler.runAllReportsWorkflow();
 
         assertEquals("SUCCESS", result.get("status"));
-        assertEquals("All Reports", result.get("reportType"));
+        assertEquals("Consolidated Reports", result.get("reportType"));
         assertEquals("ocr_status = COMPLETED", result.get("filter"));
         assertEquals(2L, result.get("totalRecords"));
         assertEquals("YES", result.get("emailSent"));

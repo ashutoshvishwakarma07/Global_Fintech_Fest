@@ -15,6 +15,7 @@ import { CameraCaptureModal } from "@/components/camera/CameraCaptureModal";
 import { ToastContainer, ToastMessage } from "@/components/common/Toast";
 import { CollageResult } from "@/services/collageService";
 import { UserManagementDashboard } from "@/components/admin/UserManagementDashboard";
+import { imageProcessing, ACCEPTED_FILE_INPUT_TYPES } from "@/utils/imageProcessing";
 
 export default function Home() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -160,13 +161,22 @@ export default function Home() {
 
   // Triggered when image is picked from gallery in single mode
   const handleSelectImageFile = (file: File) => {
+    const validation = imageProcessing.validateFile(file);
+    if (!validation.valid) {
+      addToast(
+        "error",
+        "Invalid File Format",
+        validation.error || "Only PNG, JPG/JPEG, Word (.doc, .docx), and PDF files are allowed."
+      );
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (e) => {
       if (e.target?.result) {
         setCaptureMode("single");
         setTwoSideData(null);
         setCapturedImage(e.target.result as string);
-        addToast("info", "Image selected", "Select document type and verify details");
+        addToast("info", "File selected", "Select document type and verify details");
       }
     };
     reader.readAsDataURL(file);
@@ -255,7 +265,7 @@ export default function Home() {
       <input
         ref={nativeInputRef}
         type="file"
-        accept="image/*"
+        accept={ACCEPTED_FILE_INPUT_TYPES}
         capture="environment"
         className="hidden"
         onChange={(e) => {

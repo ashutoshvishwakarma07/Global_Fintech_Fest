@@ -4,8 +4,8 @@ import java.util.Properties;
 
 public class MailTest {
     public static void main(String[] args) {
-        String username = "nonisonani16@gmail.com";
-        String password = "Jyotilsonani16@";
+        String username = "alert@qualtechedge.com";
+        String password = "wgcdoupsprrenrjg";
         
         System.out.println("Testing Port 587 STARTTLS with TLS 1.2 / 1.3...");
         testPort587(username, password);

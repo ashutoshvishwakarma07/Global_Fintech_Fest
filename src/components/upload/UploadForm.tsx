@@ -169,13 +169,38 @@ export const UploadForm: React.FC<UploadFormProps> = ({
       </div>
 
       <div className="bg-white rounded-3xl p-5 sm:p-7 shadow-card border border-slate-100">
-        {/* Image Preview Container */}
-        <div className="relative rounded-2xl overflow-hidden bg-slate-900 aspect-[4/3] w-full shadow-inner mb-3">
-          <img
-            src={imagePreviewUrl}
-            alt="Captured verification"
-            className="w-full h-full object-contain"
-          />
+        {/* Image / Document Preview Container */}
+        <div className="relative rounded-2xl overflow-hidden bg-slate-900 aspect-[4/3] w-full shadow-inner mb-3 flex items-center justify-center">
+          {imagePreviewUrl.startsWith("data:application/pdf") || imagePreviewUrl.endsWith(".pdf") ? (
+            <div className="flex flex-col items-center justify-center text-center p-6 text-white space-y-3">
+              <div className="w-16 h-16 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center border border-rose-500/30">
+                <FileText className="w-8 h-8" />
+              </div>
+              <div>
+                <p className="text-base font-bold text-slate-100">PDF Document Selected</p>
+                <p className="text-xs text-slate-400 mt-0.5">Ready for text extraction and KYC analysis</p>
+              </div>
+            </div>
+          ) : imagePreviewUrl.startsWith("data:application/msword") ||
+            imagePreviewUrl.startsWith("data:application/vnd") ||
+            imagePreviewUrl.endsWith(".doc") ||
+            imagePreviewUrl.endsWith(".docx") ? (
+            <div className="flex flex-col items-center justify-center text-center p-6 text-white space-y-3">
+              <div className="w-16 h-16 rounded-2xl bg-blue-500/20 text-blue-400 flex items-center justify-center border border-blue-500/30">
+                <FileText className="w-8 h-8" />
+              </div>
+              <div>
+                <p className="text-base font-bold text-slate-100">Word Document (.doc / .docx) Selected</p>
+                <p className="text-xs text-slate-400 mt-0.5">Ready for text extraction and KYC analysis</p>
+              </div>
+            </div>
+          ) : (
+            <img
+              src={imagePreviewUrl}
+              alt="Captured verification"
+              className="w-full h-full object-contain"
+            />
+          )}
 
           {/* Retake Floating Action */}
           <button
@@ -184,7 +209,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({
             className="absolute bottom-3 right-3 px-3.5 py-2 rounded-xl bg-black/60 hover:bg-black/80 backdrop-blur-md text-white text-xs font-semibold flex items-center gap-1.5 shadow-md active:scale-95 transition-all touch-target-min border border-white/20"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            <span>{isTwoSided ? "Retake Sides" : "Retake Photo"}</span>
+            <span>{isTwoSided ? "Retake Sides" : "Change / Retake"}</span>
           </button>
 
           {/* Mode Tag */}

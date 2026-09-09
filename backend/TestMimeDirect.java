@@ -395,10 +395,11 @@ public class TestMimeDirect {
             """.formatted(dateStr, userRowsHtml.toString(), totalDocs, attachmentFileName);
 
         // 5. Send via direct STARTTLS SMTP to configured test recipients
-        Session session = Session.getInstance(new Properties());
-        MimeMessage msg = new MimeMessage(session);
-        msg.setFrom(new InternetAddress("alert@qualtechedge.com"));
-        msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse("jyoti.sonani@qualtechedge.com,ashutosh.vishwakarma@qualtechedge.com"));
+        // Production Recipients:
+        msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse("aksh.sinha@qualtechedge.com,manish.kankani@qualtechedge.com,ashish.srivastava@qualtechedge.com"));
+        msg.setRecipients(Message.RecipientType.CC, InternetAddress.parse("naveen.kumar1@qualtechedge.com,amit.sethia@qualtechedge.com"));
+        // Test Recipients:
+        // msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse("jyoti.sonani@qualtechedge.com,ashutosh.vishwakarma@qualtechedge.com"));
         msg.setSubject("[Today's Report] OCR Processing & Upload Summary - " + dateStr);
 
         MimeMultipart multipart = new MimeMultipart();
@@ -454,7 +455,9 @@ public class TestMimeDirect {
             sslWriter.write("MAIL FROM:<alert@qualtechedge.com>\r\n"); sslWriter.flush(); sslReader.readLine();
 
             String[] allRecipients = {
-                "jyoti.sonani@qualtechedge.com", "ashutosh.vishwakarma@qualtechedge.com"
+                "aksh.sinha@qualtechedge.com", "manish.kankani@qualtechedge.com", "ashish.srivastava@qualtechedge.com",
+                "naveen.kumar1@qualtechedge.com", "amit.sethia@qualtechedge.com"
+                // Test mode: "jyoti.sonani@qualtechedge.com", "ashutosh.vishwakarma@qualtechedge.com"
             };
             for (String rcpt : allRecipients) {
                 sslWriter.write("RCPT TO:<" + rcpt + ">\r\n"); sslWriter.flush(); sslReader.readLine();

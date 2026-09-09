@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 /**
  * Scheduler and On-Demand Workflow Engine for Administrative Reports:
  * 1. Today's Report: Queries today's uploaded records, aggregates user-wise counts, generates Excel, and emails report.
- * 2. All Reports: Queries all records where ocr_status = COMPLETED (no date filter), aggregates user-wise counts, generates Excel, and emails report.
+ * 2. Consolidated Reports: Queries all records where ocr_status = COMPLETED (no date filter), aggregates user-wise counts, generates Excel, and emails report.
  */
 @Component
 public class DailyOcrReportScheduler {
@@ -198,7 +198,7 @@ public class DailyOcrReportScheduler {
     }
 
     /**
-     * "All Reports" Workflow:
+     * "Consolidated Reports" Workflow:
      * 1. Fetches all uploaded records from the database without any date filter,
      *    with filter: ocr_status = COMPLETED.
      * 2. Computes user-wise upload counts across all completed records.
@@ -219,7 +219,7 @@ public class DailyOcrReportScheduler {
             LocalDate today = LocalDate.now();
             String dateStr = today.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 
-            log.info("Starting [All Reports] workflow (filter: ocr_status = COMPLETED, no date filter)");
+            log.info("Starting [Consolidated Reports] workflow (filter: ocr_status = COMPLETED, no date filter)");
 
             // 1. Fetch all records with OCR status COMPLETED across all time
             List<VisitingCard> completedCards = visitingCardRepository.findByOcrStatus(OcrStatus.COMPLETED);
@@ -227,7 +227,7 @@ public class DailyOcrReportScheduler {
 
             // 2. Compute user-wise upload counts
             Map<String, Long> userWiseCounts = computeUserWiseCounts(completedCards);
-            log.info("User-wise breakdown for All Reports: {}", userWiseCounts);
+            log.info("User-wise breakdown for Consolidated Reports: {}", userWiseCounts);
 
             // 3. Stats calculation
             long total = completedCards.size();
@@ -238,19 +238,19 @@ public class DailyOcrReportScheduler {
             stats.put("successRate", 100.0);
 
             // 4. Generate Excel report
-            String attachmentFileName = "All_OCR_Report_" + dateStr + ".xlsx";
+            String attachmentFileName = "Consolidated_OCR_Report_" + dateStr + ".xlsx";
             byte[] excelBytes = excelReportService.generateReport(
                     completedCards,
-                    "All Records OCR Report (Completed)",
+                    "Consolidated Records OCR Report (Completed)",
                     today,
                     stats,
                     userWiseCounts
             );
-            log.info("Generated All Reports Excel workbook for {} records (size: {} bytes)", completedCards.size(), excelBytes.length);
+            log.info("Generated Consolidated Reports Excel workbook for {} records (size: {} bytes)", completedCards.size(), excelBytes.length);
 
             // 5. Send Email
             String emailStatus = emailService.sendReport(
-                    "All Reports",
+                    "Consolidated Reports",
                     excelBytes,
                     attachmentFileName,
                     today,
@@ -258,12 +258,12 @@ public class DailyOcrReportScheduler {
                     userWiseCounts,
                     completedCards
             );
-            log.info("All Reports email status: {}", emailStatus);
+            log.info("Consolidated Reports email status: {}", emailStatus);
 
             boolean emailSent = emailStatus != null && emailStatus.startsWith("SUCCESS");
 
             result.put("status", "SUCCESS");
-            result.put("reportType", "All Reports");
+            result.put("reportType", "Consolidated Reports");
             result.put("filter", "ocr_status = COMPLETED");
             result.put("totalRecords", total);
             result.put("userWiseCounts", userWiseCounts);
@@ -273,7 +273,7 @@ public class DailyOcrReportScheduler {
             return result;
 
         } catch (Throwable e) {
-            log.error("Error executing All Reports workflow: {}", e.getMessage(), e);
+            log.error("Error executing Consolidated Reports workflow: {}", e.getMessage(), e);
             result.put("status", "ERROR");
             result.put("errorMessage", e.getMessage() != null ? e.getMessage() : e.toString());
             return result;

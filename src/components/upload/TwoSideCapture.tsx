@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { collageService, CollageResult } from "@/services/collageService";
+import { imageProcessing, ACCEPTED_FILE_INPUT_TYPES } from "@/utils/imageProcessing";
 import {
   Camera,
   ImageUp,
@@ -63,6 +64,12 @@ export const TwoSideCapture: React.FC<TwoSideCaptureProps> = ({
   const handleFrontFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      const validation = imageProcessing.validateFile(file);
+      if (!validation.valid) {
+        alert(validation.error || "Unsupported file format. Please upload PNG, JPG/JPEG, Word (.doc, .docx), or PDF files only.");
+        e.target.value = "";
+        return;
+      }
       const reader = new FileReader();
       reader.onload = (event) => {
         if (event.target?.result) {
@@ -79,6 +86,12 @@ export const TwoSideCapture: React.FC<TwoSideCaptureProps> = ({
   const handleBackFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      const validation = imageProcessing.validateFile(file);
+      if (!validation.valid) {
+        alert(validation.error || "Unsupported file format. Please upload PNG, JPG/JPEG, Word (.doc, .docx), or PDF files only.");
+        e.target.value = "";
+        return;
+      }
       const reader = new FileReader();
       reader.onload = (event) => {
         if (event.target?.result) {
@@ -134,14 +147,14 @@ export const TwoSideCapture: React.FC<TwoSideCaptureProps> = ({
       <input
         ref={frontFileInputRef}
         type="file"
-        accept="image/*"
+        accept={ACCEPTED_FILE_INPUT_TYPES}
         onChange={handleFrontFileSelected}
         className="hidden"
       />
       <input
         ref={backFileInputRef}
         type="file"
-        accept="image/*"
+        accept={ACCEPTED_FILE_INPUT_TYPES}
         onChange={handleBackFileSelected}
         className="hidden"
       />

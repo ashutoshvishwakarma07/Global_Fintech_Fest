@@ -19,7 +19,7 @@ client.on('data', (d) => {
         send("HELO qualtechedge.com");
     } else if (resp.startsWith("250") && step === 1) {
         step = 2;
-        send("MAIL FROM:<nonisonani16@gmail.com>");
+        send("MAIL FROM:<alert@qualtechedge.com>");
     } else if (resp.startsWith("250") && step === 2) {
         step = 3;
         send("RCPT TO:<jyoti.sonani@qualtechedge.com>");

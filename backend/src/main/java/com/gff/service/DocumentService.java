@@ -35,17 +35,20 @@ public class DocumentService {
     private final VisitingCardRepository visitingCardRepository;
     private final S3Service s3Service;
     private final DynamicOcrService dynamicOcrService;
+    private final IrisService irisService;
     private final EmailService emailService;
     private final CardShareAuditRepository cardShareAuditRepository;
 
     public DocumentService(VisitingCardRepository visitingCardRepository,
                            S3Service s3Service,
                            DynamicOcrService dynamicOcrService,
+                           IrisService irisService,
                            EmailService emailService,
                            CardShareAuditRepository cardShareAuditRepository) {
         this.visitingCardRepository = visitingCardRepository;
         this.s3Service = s3Service;
         this.dynamicOcrService = dynamicOcrService;
+        this.irisService = irisService;
         this.emailService = emailService;
         this.cardShareAuditRepository = cardShareAuditRepository;
     }
@@ -61,27 +64,20 @@ public class DocumentService {
             finalRecordId = "IMG-" + System.currentTimeMillis();
         }
 
-        String s3Key = "visiting-cards/" + finalRecordId + ".jpg";
+        String rawFileName = request.getFileName();
+        String fileExt = ".jpg";
         String s3Bucket = s3Service.getBucketName();
+        String s3Key = "visiting-cards/" + finalRecordId + ".jpg";
         String imageUrl = "https://" + s3Bucket + ".s3." + s3Service.getRegion() + ".amazonaws.com/" + s3Key;
 
         if (request.getImageBase64() != null && !request.getImageBase64().trim().isEmpty()) {
-            byte[] imageBytes;
-            String contentType = "image/jpeg";
-            String rawBase64 = request.getImageBase64();
-            try {
-                String base64Str = rawBase64;
-                if (base64Str.contains(",")) {
-                    String prefix = base64Str.substring(0, base64Str.indexOf(","));
-                    if (prefix.contains("image/png")) contentType = "image/png";
-                    else if (prefix.contains("image/webp")) contentType = "image/webp";
-                    base64Str = base64Str.substring(base64Str.indexOf(",") + 1);
-                }
-                imageBytes = java.util.Base64.getDecoder().decode(base64Str.trim());
-            } catch (Exception e) {
-                log.error("Failed to decode base64 image data for record [{}]: {}", finalRecordId, e.getMessage());
-                throw new ApiException("Invalid base64 image payload: " + e.getMessage(), HttpStatus.BAD_REQUEST);
-            }
+            FileFormatInfo formatInfo = validateAndResolveFormat(request.getImageBase64(), rawFileName);
+            byte[] imageBytes = formatInfo.bytes;
+            String contentType = formatInfo.contentType;
+            fileExt = formatInfo.extension;
+
+            s3Key = "visiting-cards/" + finalRecordId + fileExt;
+            imageUrl = "https://" + s3Bucket + ".s3." + s3Service.getRegion() + ".amazonaws.com/" + s3Key;
 
             // Direct upload to AWS S3 bucket (NO local filesystem storage)
             boolean s3Uploaded = false;
@@ -100,12 +96,20 @@ public class DocumentService {
             // If S3 upload wasn't completed (e.g. AWS credentials not configured on local machine),
             // store image in PostgreSQL as data URI so it streams without 404 and WITHOUT local disk pollution!
             if (!s3Uploaded) {
-                if (!rawBase64.startsWith("data:image/")) {
+                String rawBase64 = request.getImageBase64();
+                if (!rawBase64.startsWith("data:")) {
                     imageUrl = "data:" + contentType + ";base64," + rawBase64;
                 } else {
                     imageUrl = rawBase64;
                 }
                 log.info("Recorded S3 reference [{}] with image payload in PostgreSQL database (zero local filesystem storage).", s3Key);
+            }
+        } else if (rawFileName != null && !rawFileName.trim().isEmpty()) {
+            // If only file name is provided, validate extension
+            String ext = rawFileName.toLowerCase();
+            if (!ext.endsWith(".png") && !ext.endsWith(".jpg") && !ext.endsWith(".jpeg") &&
+                !ext.endsWith(".pdf") && !ext.endsWith(".doc") && !ext.endsWith(".docx")) {
+                throw new ApiException("Unsupported file format. Only PNG, JPEG, JPG, Word (.doc, .docx), and PDF files are allowed.", HttpStatus.BAD_REQUEST);
             }
         }
 
@@ -155,14 +159,27 @@ public class DocumentService {
                 .build();
 
         VisitingCard saved = visitingCardRepository.save(card);
-        if (!hasOcr) {
-            try {
-                dynamicOcrService.processCardOcrDynamically(saved);
-                saved = visitingCardRepository.save(saved);
-            } catch (Exception e) {
-                log.warn("Dynamic OCR extraction during upload for {} notice: {}", saved.getRecordId(), e.getMessage());
+
+        // Trigger IRIS OCR extraction synchronously on every image upload to extract KYC fields and log JSON
+        try {
+            String ocrImagePayload = (request.getImageBase64() != null && !request.getImageBase64().trim().isEmpty())
+                    ? request.getImageBase64()
+                    : saved.getImageUrl();
+            if (ocrImagePayload != null && !ocrImagePayload.trim().isEmpty()) {
+                log.info("Triggering IRIS OCR /extract-document extraction for record: {}", saved.getRecordId());
+                boolean irisSuccess = irisService.extractVisitingCardSync(saved, ocrImagePayload);
+                if (irisSuccess) {
+                    saved = visitingCardRepository.findById(saved.getId()).orElse(saved);
+                    log.info("IRIS OCR extraction completed successfully for card: {}", saved.getRecordId());
+                } else {
+                    dynamicOcrService.processCardOcrDynamically(saved);
+                    saved = visitingCardRepository.findById(saved.getId()).orElse(saved);
+                }
             }
+        } catch (Exception e) {
+            log.warn("IRIS OCR extraction during upload for record [{}] notice: {}", saved.getRecordId(), e.getMessage());
         }
+
         log.info("Created visiting card record: {} by {}", saved.getRecordId(), saved.getUploaderEmail());
         return DocumentResponse.fromEntity(saved);
     }
@@ -369,6 +386,124 @@ public class DocumentService {
         boolean isPrivileged = "SUPERVISOR".equalsIgnoreCase(currentUserRole) || "ADMIN".equalsIgnoreCase(currentUserRole);
         if (!isPrivileged && (currentUserEmail == null || !currentUserEmail.equalsIgnoreCase(card.getUploaderEmail()))) {
             throw new ApiException("Access Denied: You do not have permission to view or share this document.", HttpStatus.FORBIDDEN);
+        }
+    }
+
+    /**
+     * Determines and strictly validates the file format.
+     * Allowed formats: PNG, JPG/JPEG, Word (.doc, .docx), PDF.
+     * Throws ApiException if file type is unsupported.
+     */
+    private FileFormatInfo validateAndResolveFormat(String rawBase64, String providedFileName) {
+        String fileName = providedFileName != null ? providedFileName.trim().toLowerCase() : "";
+        String extension = "";
+        String contentType = "";
+
+        if (fileName.contains(".")) {
+            extension = fileName.substring(fileName.lastIndexOf("."));
+        }
+
+        String dataUriPrefix = "";
+        String base64Str = rawBase64;
+        if (base64Str.contains(",")) {
+            dataUriPrefix = base64Str.substring(0, base64Str.indexOf(",")).toLowerCase();
+            base64Str = base64Str.substring(base64Str.indexOf(",") + 1);
+        }
+
+        byte[] decodedBytes;
+        try {
+            decodedBytes = java.util.Base64.getDecoder().decode(base64Str.trim());
+        } catch (Exception e) {
+            throw new ApiException("Invalid base64 payload: " + e.getMessage(), HttpStatus.BAD_REQUEST);
+        }
+
+        // 1. Detect from Data URI prefix first if present
+        if (dataUriPrefix.contains("image/png")) {
+            contentType = "image/png";
+            extension = ".png";
+        } else if (dataUriPrefix.contains("image/jpeg") || dataUriPrefix.contains("image/jpg") || dataUriPrefix.contains("image/pjpeg")) {
+            contentType = "image/jpeg";
+            extension = extension.equals(".jpeg") ? ".jpeg" : ".jpg";
+        } else if (dataUriPrefix.contains("application/pdf")) {
+            contentType = "application/pdf";
+            extension = ".pdf";
+        } else if (dataUriPrefix.contains("application/msword")) {
+            contentType = "application/msword";
+            extension = ".doc";
+        } else if (dataUriPrefix.contains("wordprocessingml") || dataUriPrefix.contains("officedocument.wordprocessingml")) {
+            contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            extension = ".docx";
+        }
+
+        // 2. Detect / Verify via Magic Bytes (file signatures)
+        if (decodedBytes.length >= 4) {
+            // PNG: 89 50 4E 47
+            if ((decodedBytes[0] & 0xFF) == 0x89 && (decodedBytes[1] & 0xFF) == 0x50 &&
+                (decodedBytes[2] & 0xFF) == 0x4E && (decodedBytes[3] & 0xFF) == 0x47) {
+                contentType = "image/png";
+                extension = ".png";
+            }
+            // JPEG: FF D8 FF
+            else if ((decodedBytes[0] & 0xFF) == 0xFF && (decodedBytes[1] & 0xFF) == 0xD8 && (decodedBytes[2] & 0xFF) == 0xFF) {
+                contentType = "image/jpeg";
+                extension = extension.equals(".jpeg") ? ".jpeg" : ".jpg";
+            }
+            // PDF: %PDF (25 50 44 46)
+            else if ((decodedBytes[0] & 0xFF) == 0x25 && (decodedBytes[1] & 0xFF) == 0x50 &&
+                     (decodedBytes[2] & 0xFF) == 0x44 && (decodedBytes[3] & 0xFF) == 0x46) {
+                contentType = "application/pdf";
+                extension = ".pdf";
+            }
+            // DOCX / ZIP (PK..): 50 4B 03 04
+            else if ((decodedBytes[0] & 0xFF) == 0x50 && (decodedBytes[1] & 0xFF) == 0x4B &&
+                     (decodedBytes[2] & 0xFF) == 0x03 && (decodedBytes[3] & 0xFF) == 0x04) {
+                contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+                extension = ".docx";
+            }
+            // DOC (OLE2): D0 CF 11 E0
+            else if ((decodedBytes[0] & 0xFF) == 0xD0 && (decodedBytes[1] & 0xFF) == 0xCF &&
+                     (decodedBytes[2] & 0xFF) == 0x11 && (decodedBytes[3] & 0xFF) == 0xE0) {
+                contentType = "application/msword";
+                extension = ".doc";
+            }
+        }
+
+        // 3. Fallback to file extension matching if bytes header is generic
+        if (contentType.isEmpty() && !extension.isEmpty()) {
+            if (extension.equals(".png")) {
+                contentType = "image/png";
+            } else if (extension.equals(".jpg") || extension.equals(".jpeg")) {
+                contentType = "image/jpeg";
+            } else if (extension.equals(".pdf")) {
+                contentType = "application/pdf";
+            } else if (extension.equals(".doc")) {
+                contentType = "application/msword";
+            } else if (extension.equals(".docx")) {
+                contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            }
+        }
+
+        // 4. Final strict validation check
+        if (!extension.equals(".png") && !extension.equals(".jpg") && !extension.equals(".jpeg") &&
+            !extension.equals(".pdf") && !extension.equals(".doc") && !extension.equals(".docx")) {
+            throw new ApiException(
+                    "Unsupported file format [" + (extension.isEmpty() ? "Unknown" : extension) + "]. Only PNG, JPEG, JPG, Word (.doc, .docx), and PDF files are supported.",
+                    HttpStatus.BAD_REQUEST
+            );
+        }
+
+        return new FileFormatInfo(decodedBytes, contentType, extension);
+    }
+
+    private static class FileFormatInfo {
+        final byte[] bytes;
+        final String contentType;
+        final String extension;
+
+        FileFormatInfo(byte[] bytes, String contentType, String extension) {
+            this.bytes = bytes;
+            this.contentType = contentType;
+            this.extension = extension;
         }
     }
 }
