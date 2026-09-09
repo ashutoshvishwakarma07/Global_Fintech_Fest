@@ -187,10 +187,10 @@ public class DailyOcrReportScheduler {
             result.put("attachmentName", attachmentFileName);
             return result;
 
-        } catch (Exception e) {
+        } catch (Throwable e) {
             log.error("Error executing Today's Report workflow: {}", e.getMessage(), e);
             result.put("status", "ERROR");
-            result.put("errorMessage", e.getMessage());
+            result.put("errorMessage", e.getMessage() != null ? e.getMessage() : e.toString());
             return result;
         } finally {
             isJobRunning.set(false);
@@ -272,10 +272,10 @@ public class DailyOcrReportScheduler {
             result.put("attachmentName", attachmentFileName);
             return result;
 
-        } catch (Exception e) {
+        } catch (Throwable e) {
             log.error("Error executing All Reports workflow: {}", e.getMessage(), e);
             result.put("status", "ERROR");
-            result.put("errorMessage", e.getMessage());
+            result.put("errorMessage", e.getMessage() != null ? e.getMessage() : e.toString());
             return result;
         } finally {
             isJobRunning.set(false);

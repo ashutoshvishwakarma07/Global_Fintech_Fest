@@ -210,7 +210,7 @@ export const authService = {
 
     try {
       const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-      const timeoutId = controller ? setTimeout(() => controller.abort(), 3500) : null;
+      const timeoutId = controller ? setTimeout(() => controller.abort(), 20000) : null;
 
       const response = await fetch(`${API_BASE_URL}/auth/me`, {
         method: "GET",

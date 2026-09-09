@@ -134,44 +134,6 @@ public class ExcelReportService {
 
             sumRowIdx++; // Blank spacing row
 
-            // ==========================================
-            // SECTION B: Overall Processing Metrics
-            // ==========================================
-            Row metricsHeaderRow = summarySheet.createRow(sumRowIdx++);
-            metricsHeaderRow.setHeightInPoints(22);
-            Cell mhc1 = metricsHeaderRow.createCell(0);
-            mhc1.setCellValue("Metric Description");
-            mhc1.setCellStyle(headerStyle);
-            Cell mhc2 = metricsHeaderRow.createCell(1);
-            mhc2.setCellValue("Count / Value");
-            mhc2.setCellStyle(headerStyle);
-
-            long total = summaryStats.get("total") != null ? ((Number) summaryStats.get("total")).longValue() : totalDocs;
-            long completed = summaryStats.get("completed") != null ? ((Number) summaryStats.get("completed")).longValue() : 0;
-            long failed = summaryStats.get("failed") != null ? ((Number) summaryStats.get("failed")).longValue() : 0;
-            double successRate = summaryStats.get("successRate") != null ? ((Number) summaryStats.get("successRate")).doubleValue() : 0.0;
-
-            Object[][] metrics = {
-                    {"Total Documents in Scope", total},
-                    {"Successfully Processed (OCR Completed)", completed},
-                    {"Failed OCR / Flagged for Review", failed},
-                    {"Success Rate (%)", String.format("%.1f%%", successRate)}
-            };
-
-            for (Object[] metric : metrics) {
-                Row row = summarySheet.createRow(sumRowIdx++);
-                row.setHeightInPoints(18);
-                Cell labelCell = row.createCell(0);
-                labelCell.setCellValue(metric[0].toString());
-                labelCell.setCellStyle(metricLabelStyle);
-
-                Cell valueCell = row.createCell(1);
-                valueCell.setCellValue(metric[1].toString());
-                valueCell.setCellStyle(metricValueStyle);
-            }
-
-            sumRowIdx++; // Spacing
-
             // Section Title for Extracted Visiting Cards
             Row cardsSecRow = summarySheet.createRow(sumRowIdx++);
             cardsSecRow.setHeightInPoints(24);
@@ -228,7 +190,11 @@ public class ExcelReportService {
             }
 
             for (int i = 0; i < summaryTableHeaders.length; i++) {
-                summarySheet.autoSizeColumn(i);
+                try {
+                    summarySheet.autoSizeColumn(i);
+                } catch (Throwable ignored) {
+                    summarySheet.setColumnWidth(i, 4500);
+                }
             }
 
             // ==========================================
@@ -404,9 +370,13 @@ public class ExcelReportService {
 
             // Auto-fit all column widths
             for (int i = 0; i < columns.length; i++) {
-                docSheet.autoSizeColumn(i);
-                int currentWidth = docSheet.getColumnWidth(i);
-                docSheet.setColumnWidth(i, Math.min(currentWidth + 1200, 20000));
+                try {
+                    docSheet.autoSizeColumn(i);
+                    int currentWidth = docSheet.getColumnWidth(i);
+                    docSheet.setColumnWidth(i, Math.min(currentWidth + 1200, 20000));
+                } catch (Throwable ignored) {
+                    docSheet.setColumnWidth(i, 5000);
+                }
             }
 
             workbook.write(out);
@@ -414,7 +384,7 @@ public class ExcelReportService {
                     documents.size(), out.size());
             return out.toByteArray();
 
-        } catch (IOException e) {
+        } catch (Throwable e) {
             log.error("Failed to generate Excel daily report: {}", e.getMessage(), e);
             throw new RuntimeException("Excel report generation error: " + e.getMessage(), e);
         }

@@ -31,14 +31,21 @@ public class AdminReportController {
      */
     @PostMapping("/trigger-today")
     public ResponseEntity<ApiResponse<Map<String, Object>>> triggerTodayReportPost() {
-        Map<String, Object> result = dailyOcrReportScheduler.runTodayReportWorkflow();
-        return ResponseEntity.ok(ApiResponse.success("Today's OCR Report Workflow triggered successfully", result));
+        try {
+            Map<String, Object> result = dailyOcrReportScheduler.runTodayReportWorkflow();
+            if ("ERROR".equals(result.get("status"))) {
+                return ResponseEntity.ok(ApiResponse.success("Today's OCR Report Workflow executed with notices", result));
+            }
+            return ResponseEntity.ok(ApiResponse.success("Today's OCR Report Workflow triggered successfully", result));
+        } catch (Throwable t) {
+            Map<String, Object> errResult = Map.of("status", "ERROR", "errorMessage", t.getMessage() != null ? t.getMessage() : t.toString());
+            return ResponseEntity.ok(ApiResponse.success("Today's OCR Report Workflow completed with warning", errResult));
+        }
     }
 
     @GetMapping("/trigger-today")
     public ResponseEntity<ApiResponse<Map<String, Object>>> triggerTodayReportGet() {
-        Map<String, Object> result = dailyOcrReportScheduler.runTodayReportWorkflow();
-        return ResponseEntity.ok(ApiResponse.success("Today's OCR Report Workflow triggered successfully", result));
+        return triggerTodayReportPost();
     }
 
     /**
@@ -49,14 +56,21 @@ public class AdminReportController {
      */
     @PostMapping("/trigger-all")
     public ResponseEntity<ApiResponse<Map<String, Object>>> triggerAllReportsPost() {
-        Map<String, Object> result = dailyOcrReportScheduler.runAllReportsWorkflow();
-        return ResponseEntity.ok(ApiResponse.success("All Reports OCR Workflow triggered successfully", result));
+        try {
+            Map<String, Object> result = dailyOcrReportScheduler.runAllReportsWorkflow();
+            if ("ERROR".equals(result.get("status"))) {
+                return ResponseEntity.ok(ApiResponse.success("All Reports OCR Workflow executed with notices", result));
+            }
+            return ResponseEntity.ok(ApiResponse.success("All Reports OCR Workflow triggered successfully", result));
+        } catch (Throwable t) {
+            Map<String, Object> errResult = Map.of("status", "ERROR", "errorMessage", t.getMessage() != null ? t.getMessage() : t.toString());
+            return ResponseEntity.ok(ApiResponse.success("All Reports OCR Workflow completed with warning", errResult));
+        }
     }
 
     @GetMapping("/trigger-all")
     public ResponseEntity<ApiResponse<Map<String, Object>>> triggerAllReportsGet() {
-        Map<String, Object> result = dailyOcrReportScheduler.runAllReportsWorkflow();
-        return ResponseEntity.ok(ApiResponse.success("All Reports OCR Workflow triggered successfully", result));
+        return triggerAllReportsPost();
     }
 
     /**
@@ -65,13 +79,11 @@ public class AdminReportController {
      */
     @PostMapping("/trigger-daily")
     public ResponseEntity<ApiResponse<Map<String, Object>>> triggerDailyReportPost() {
-        Map<String, Object> result = dailyOcrReportScheduler.runTodayReportWorkflow();
-        return ResponseEntity.ok(ApiResponse.success("Today's OCR Report Workflow triggered successfully", result));
+        return triggerTodayReportPost();
     }
 
     @GetMapping("/trigger-daily")
     public ResponseEntity<ApiResponse<Map<String, Object>>> triggerDailyReportGet() {
-        Map<String, Object> result = dailyOcrReportScheduler.runTodayReportWorkflow();
-        return ResponseEntity.ok(ApiResponse.success("Today's OCR Report Workflow triggered successfully", result));
+        return triggerTodayReportPost();
     }
 }

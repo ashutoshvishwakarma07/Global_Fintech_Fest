@@ -383,7 +383,7 @@ export const apiService = {
       }
 
       const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-      const timeoutId = controller ? setTimeout(() => controller.abort(), 4000) : null;
+      const timeoutId = controller ? setTimeout(() => controller.abort(), 20000) : null;
 
       const response = await fetch(url.toString(), {
         headers,
@@ -393,10 +393,18 @@ export const apiService = {
         if (timeoutId) clearTimeout(timeoutId);
       });
 
-      if (!response.ok) return null;
+      if (!response.ok) {
+        console.warn(`[apiService] fetchDocuments returned status ${response.status}`);
+        return null;
+      }
       const json = await response.json();
       return json.data;
-    } catch {
+    } catch (err: any) {
+      if (err?.name === "AbortError") {
+        console.warn("[apiService] fetchDocuments request timed out after 20s");
+      } else {
+        console.error("[apiService] fetchDocuments error:", err);
+      }
       return null;
     }
   },

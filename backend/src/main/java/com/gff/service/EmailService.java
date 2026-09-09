@@ -347,28 +347,6 @@ public class EmailService {
                     </tfoot>
                   </table>
 
-                  <!-- Overall KPI Cards -->
-                  <table class="stats-table">
-                    <tr>
-                      <td class="stat-card">
-                        <div class="stat-label">Total Cards</div>
-                        <div class="stat-value" style="color: #1e293b;">%d</div>
-                      </td>
-                      <td class="stat-card">
-                        <div class="stat-label" style="color: #16a34a;">Processed</div>
-                        <div class="stat-value" style="color: #16a34a;">%d</div>
-                      </td>
-                      <td class="stat-card">
-                        <div class="stat-label" style="color: #dc2626;">Failed</div>
-                        <div class="stat-value" style="color: #dc2626;">%d</div>
-                      </td>
-                      <td class="stat-card">
-                        <div class="stat-label" style="color: #2563eb;">Success Rate</div>
-                        <div class="stat-value" style="color: #2563eb;">%.1f%%</div>
-                      </td>
-                    </tr>
-                  </table>
-
                   <div class="cta-box">
                     <p style="margin: 0; font-size: 13px; font-weight: bold; color: #1e40af;">📎 Detailed Report Attached</p>
                     <p style="margin: 4px 0 0 0; font-size: 12px; color: #3b82f6;">
@@ -389,10 +367,6 @@ public class EmailService {
                 userSummaryText.toString(),
                 userRowsHtml.toString(),
                 totalDocs,
-                totalDocs,
-                completedDocs,
-                failedDocs,
-                successRate,
                 attachmentFileName
             );
     }
