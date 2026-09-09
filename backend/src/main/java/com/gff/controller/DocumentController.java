@@ -72,7 +72,7 @@ public class DocumentController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<DocumentResponse>> getDocumentById(
-            @PathVariable Long id,
+            @PathVariable String id,
             HttpServletRequest httpRequest) {
 
         User currentUser = (User) httpRequest.getAttribute("currentUser");
@@ -80,11 +80,20 @@ public class DocumentController {
             throw new ApiException("Full authentication is required to view document details", HttpStatus.UNAUTHORIZED);
         }
 
-        DocumentResponse record = documentService.getDocumentById(
-                id,
-                currentUser.getEmail(),
-                currentUser.getRole().name()
-        );
+        DocumentResponse record;
+        if (id != null && id.matches("^\\d+$")) {
+            record = documentService.getDocumentById(
+                    Long.parseLong(id),
+                    currentUser.getEmail(),
+                    currentUser.getRole().name()
+            );
+        } else {
+            record = documentService.getDocumentByRecordId(
+                    id,
+                    currentUser.getEmail(),
+                    currentUser.getRole().name()
+            );
+        }
         return ResponseEntity.ok(ApiResponse.success("Document details retrieved", record));
     }
 

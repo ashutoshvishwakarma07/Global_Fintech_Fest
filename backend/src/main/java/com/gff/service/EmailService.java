@@ -315,16 +315,10 @@ public class EmailService {
                   <p>Date: %s | Report Generated Automatically</p>
                 </div>
                 <div class="content">
-                  <p style="color: #334155; font-size: 14px; margin: 0 0 10px 0;">Hello Team Lead,</p>
+                  <p style="color: #334155; font-size: 14px; margin: 0 0 10px 0;">Hi,</p>
                   <p style="color: #64748b; font-size: 13px; line-height: 1.5; margin: 0 0 15px 0;">
                     Please find below the visiting card OCR upload and processing summary:
                   </p>
-
-                  <!-- Quick User-wise Summary Line -->
-                  <div class="summary-line-box">
-                    <div class="summary-line-title">📊 User-Wise Upload Summary</div>
-                    <div style="font-weight: 600;">%s</div>
-                  </div>
 
                   <!-- User-wise Distribution Table -->
                   <table class="user-table">
@@ -364,7 +358,6 @@ public class EmailService {
             """.formatted(
                 reportType,
                 dateStr,
-                userSummaryText.toString(),
                 userRowsHtml.toString(),
                 totalDocs,
                 attachmentFileName

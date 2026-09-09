@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   FileText,
   Sparkles,
-  Share2,
 } from "lucide-react";
 import { getDisplayImageUrl } from "@/utils/imageUrl";
 
@@ -131,26 +130,9 @@ export const RecordCard: React.FC<RecordCardProps> = ({ record, onSelect, onShar
           <span className="font-mono text-slate-500">{record.uploadedAt}</span>
         </div>
 
-        <div className="flex items-center gap-2">
-          {onShare && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onShare(record);
-              }}
-              className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 px-2 py-1 rounded-md transition-colors"
-              title="Share visiting card with lead via email"
-            >
-              <Mail className="w-3 h-3 text-emerald-600" />
-              <span>Share</span>
-            </button>
-          )}
-
-          <div className="flex items-center gap-0.5 text-indigo-600 font-semibold text-xs group-hover:translate-x-0.5 transition-transform">
-            <span>Details</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </div>
+        <div className="flex items-center gap-0.5 text-indigo-600 font-semibold text-xs group-hover:translate-x-0.5 transition-transform">
+          <span>Details</span>
+          <ChevronRight className="w-3.5 h-3.5" />
         </div>
       </div>
     </div>
