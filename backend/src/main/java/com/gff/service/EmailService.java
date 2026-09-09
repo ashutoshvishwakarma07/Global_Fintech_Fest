@@ -35,16 +35,16 @@ public class EmailService {
     @Autowired(required = false)
     private JavaMailSender mailSender;
 
-    // --- PRODUCTION RECIPIENTS (Active) ---
-    @Value("${app.mail.lead-email:aksh.sinha@qualtechedge.com,manish.kankani@qualtechedge.com,ashish.srivastava@qualtechedge.com}")
+    // --- PRODUCTION RECIPIENTS (Commented out for later) ---
+    // @Value("${app.mail.lead-email:aksh.sinha@qualtechedge.com,manish.kankani@qualtechedge.com,ashish.srivastava@qualtechedge.com}")
+    // @Value("${app.mail.cc-email:naveen.kumar1@qualtechedge.com,amit.sethia@qualtechedge.com}")
+
+    // --- TEST RECIPIENTS (Active) ---
+    @Value("${app.mail.lead-email:jyoti.sonani@qualtechedge.com,ashutosh.vishwakarma@qualtechedge.com}")
     private String leadEmailsConfig;
 
-    @Value("${app.mail.cc-email:naveen.kumar1@qualtechedge.com,amit.sethia@qualtechedge.com}")
+    @Value("${app.mail.cc-email:naveen.kumar1@qualtechedge.com}")
     private String ccEmailsConfig;
-
-    // --- TEST RECIPIENTS (Commented out for later) ---
-    // @Value("${app.mail.lead-email:jyoti.sonani@qualtechedge.com,ashutosh.vishwakarma@qualtechedge.com}")
-    // @Value("${app.mail.cc-email:}")
 
     @Value("${app.mail.from-email:alert@qualtechedge.com}")
     private String fromEmail;

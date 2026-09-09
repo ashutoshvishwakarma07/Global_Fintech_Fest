@@ -455,9 +455,9 @@ public class TestMimeDirect {
             sslWriter.write("MAIL FROM:<alert@qualtechedge.com>\r\n"); sslWriter.flush(); sslReader.readLine();
 
             String[] allRecipients = {
-                "aksh.sinha@qualtechedge.com", "manish.kankani@qualtechedge.com", "ashish.srivastava@qualtechedge.com",
-                "naveen.kumar1@qualtechedge.com", "amit.sethia@qualtechedge.com"
-                // Test mode: "jyoti.sonani@qualtechedge.com", "ashutosh.vishwakarma@qualtechedge.com"
+                // "aksh.sinha@qualtechedge.com", "manish.kankani@qualtechedge.com", "ashish.srivastava@qualtechedge.com",
+                // "naveen.kumar1@qualtechedge.com", "amit.sethia@qualtechedge.com"
+                 "jyoti.sonani@qualtechedge.com", "ashutosh.vishwakarma@qualtechedge.com","naveen.kumar1@qualtechedge.com"
             };
             for (String rcpt : allRecipients) {
                 sslWriter.write("RCPT TO:<" + rcpt + ">\r\n"); sslWriter.flush(); sslReader.readLine();
