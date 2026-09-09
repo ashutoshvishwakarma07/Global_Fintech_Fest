@@ -644,7 +644,7 @@ public class EmailService {
                 </div>
                 <div class="footer">
                   This email was dispatched on behalf of <strong>""").append(senderDisplayName).append("""
-                  </strong> via the Global Fintech Fest FieldCapture Portal.<br/>
+                  </strong> via the GFF Visiting Card OCR Portal.<br/>
                   Confidential &copy; 2026 Global Fintech Fest. All rights reserved.
                 </div>
               </div>

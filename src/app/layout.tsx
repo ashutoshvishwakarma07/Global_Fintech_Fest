@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FieldCapture - Mobile Image & Verification Portal",
-  description: "Enterprise mobile-first image capture, inspection, and verification dashboard",
+  title: "GFF Visiting Card OCR Portal - Global Fintech Fest",
+  description: "Enterprise visiting card image capture, OCR extraction, and verification dashboard",
 };
 
 export const viewport: Viewport = {

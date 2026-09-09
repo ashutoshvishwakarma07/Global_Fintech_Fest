@@ -2,7 +2,7 @@
 
 import React from "react";
 import { User } from "@/types";
-import { LogOut, ShieldCheck, Shield } from "lucide-react";
+import { LogOut } from "lucide-react";
 
 interface AppHeaderProps {
   user: User;
@@ -22,51 +22,57 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const getRoleBadge = (role: string) => {
     switch (role) {
       case "Admin":
-        return "bg-purple-100 text-purple-800 border-purple-200";
+        return "bg-purple-900/60 text-purple-200 border-purple-500/40";
       case "Supervisor":
-        return "bg-amber-100 text-amber-800 border-amber-200";
+        return "bg-amber-900/60 text-amber-200 border-amber-500/40";
       case "Operations":
-        return "bg-cyan-100 text-cyan-800 border-cyan-200";
+        return "bg-cyan-900/60 text-cyan-200 border-cyan-500/40";
       case "Partner":
-        return "bg-indigo-100 text-indigo-800 border-indigo-200";
+        return "bg-indigo-900/60 text-indigo-200 border-indigo-500/40";
       case "Lender":
-        return "bg-emerald-100 text-emerald-800 border-emerald-200";
+        return "bg-emerald-900/60 text-emerald-200 border-emerald-500/40";
       case "Field User":
       default:
-        return "bg-blue-100 text-blue-800 border-blue-200";
+        return "bg-blue-900/60 text-blue-200 border-blue-500/40";
     }
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full glass-header border-b border-slate-200/80 shadow-xs">
+    <header className="sticky top-0 z-40 w-full bg-[#021329]/95 backdrop-blur-xl border-b border-cyan-500/20 shadow-lg shadow-cyan-950/40 transition-colors">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
-        {/* Left: Brand / App Title */}
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm">
-            <ShieldCheck className="w-5 h-5" />
+        {/* Left: Brand / App Title with Animated Qualtech Logo */}
+        <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
+          <div className="flex items-center justify-center shrink-0 py-1">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/qualtech-logo.png"
+              alt="Qualtech Logo"
+              className="h-7 sm:h-8.5 w-auto max-h-[34px] object-contain brightness-110 animate-logo-breathe hover:scale-110 transition-transform duration-300 drop-shadow-[0_2px_10px_rgba(56,162,194,0.45)]"
+              style={{ maxHeight: "34px", width: "auto" }}
+            />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight leading-none">
-                FieldCapture
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap">
+              <h1 className="text-xs sm:text-[13px] font-bold text-white tracking-tight leading-none truncate">
+                GFF Visiting Card <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-teal-300">OCR Portal</span>
               </h1>
-              <span className="inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+              <span className="inline-flex items-center text-[8px] font-semibold px-1.5 py-0.5 rounded-full bg-cyan-950/80 text-cyan-300 border border-cyan-500/30 shrink-0">
                 Smart OCR
               </span>
             </div>
-            <span className="text-[10px] text-slate-500 font-medium">GFF Enterprise Portal</span>
+            <span className="text-[9px] text-cyan-200/50 font-medium block truncate mt-0.5">Global Fintech Fest</span>
           </div>
         </div>
 
         {/* Center: Desktop Navigation Tabs */}
-        <nav className="hidden md:flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200/60">
+        <nav className="hidden md:flex items-center bg-[#031d38]/70 p-1 rounded-xl border border-cyan-500/20">
           <button
             type="button"
             onClick={() => onTabChange("upload")}
             className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               activeTab === "upload"
-                ? "bg-white text-indigo-700 shadow-sm"
-                : "text-slate-600 hover:text-slate-900"
+                ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/25"
+                : "text-slate-300 hover:text-white hover:bg-white/5"
             }`}
           >
             Capture & Upload
@@ -76,13 +82,19 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             onClick={() => onTabChange("records")}
             className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               activeTab === "records"
-                ? "bg-white text-indigo-700 shadow-sm"
-                : "text-slate-600 hover:text-slate-900"
+                ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/25"
+                : "text-slate-300 hover:text-white hover:bg-white/5"
             }`}
           >
             <span>{user.role === "Admin" ? "All Records" : "My Records"}</span>
             {recordsCount > 0 && (
-              <span className="bg-indigo-600 text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full">
+              <span
+                className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
+                  activeTab === "records"
+                    ? "bg-white text-slate-900"
+                    : "bg-cyan-950 text-cyan-300 border border-cyan-500/30"
+                }`}
+              >
                 {recordsCount}
               </span>
             )}
@@ -93,8 +105,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               onClick={() => onTabChange("users")}
               className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 activeTab === "users"
-                  ? "bg-white text-indigo-700 shadow-sm"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/25"
+                  : "text-slate-300 hover:text-white hover:bg-white/5"
               }`}
             >
               <span>User Management</span>
@@ -109,15 +121,15 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               <img
                 src={user.avatar}
                 alt={user.name}
-                className="w-9 h-9 rounded-full object-cover ring-2 ring-indigo-500/20"
+                className="w-9 h-9 rounded-full object-cover ring-2 ring-cyan-500/40"
               />
             ) : (
-              <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">
+              <div className="w-9 h-9 rounded-full bg-[#031d38] text-cyan-300 border border-cyan-500/30 flex items-center justify-center font-bold text-sm shadow-sm">
                 {user.name.charAt(0)}
               </div>
             )}
             <div className="hidden sm:block text-left">
-              <div className="text-xs font-bold text-slate-900 leading-tight">
+              <div className="text-xs font-bold text-white leading-tight">
                 {user.name}
               </div>
               <div className="flex items-center gap-1 mt-0.5">
@@ -136,7 +148,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           <button
             type="button"
             onClick={onLogout}
-            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all touch-target-min flex items-center justify-center"
+            className="p-2 text-slate-300 hover:text-rose-400 hover:bg-rose-950/40 border border-transparent hover:border-rose-800/40 rounded-xl transition-all touch-target-min flex items-center justify-center"
             title="Log out"
             aria-label="Logout"
           >
