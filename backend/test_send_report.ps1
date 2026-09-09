@@ -49,20 +49,13 @@ $htmlContent = @"
         </thead>
         <tbody>
           <tr>
-            <td style="padding: 10px 14px; border-bottom: 1px solid #e2e8f0; font-weight: 500; color: #1e293b;">Jyoti Sonani</td>
-            <td style="padding: 10px 14px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: bold; color: #2563eb;">12</td>
-            <td style="padding: 10px 14px; border-bottom: 1px solid #e2e8f0; text-align: right; color: #64748b;">60.0%</td>
-          </tr>
-          <tr>
-            <td style="padding: 10px 14px; border-bottom: 1px solid #e2e8f0; font-weight: 500; color: #1e293b;">Ashutosh Vishwakarma</td>
-            <td style="padding: 10px 14px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: bold; color: #2563eb;">8</td>
-            <td style="padding: 10px 14px; border-bottom: 1px solid #e2e8f0; text-align: right; color: #64748b;">40.0%</td>
+            <td colspan="3" style="padding: 12px 14px; text-align: center; color: #94a3b8;">No uploader data available</td>
           </tr>
         </tbody>
         <tfoot>
           <tr>
             <td style="text-align: left;">Total</td>
-            <td style="text-align: right; color: #2563eb;">20</td>
+            <td style="text-align: right; color: #2563eb;">0</td>
             <td style="text-align: right;">100.0%</td>
           </tr>
         </tfoot>
