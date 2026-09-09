@@ -76,18 +76,31 @@ export default function Home() {
     let isMounted = true;
     async function initSession() {
       try {
+        // Fast instant hydration from stored local user session
+        const storedUser = authService.getStoredUser();
+        if (isMounted && storedUser) {
+          setCurrentUser(storedUser);
+          setIsInitializing(false);
+        }
+
         const user = await authService.getMe();
-        if (isMounted && user) {
-          setCurrentUser(user);
-          try {
-            const liveRecords = await apiService.getLiveRecords(user);
-            if (isMounted) setRecords(liveRecords);
-          } catch {
-            if (isMounted) setRecords([]);
+        if (isMounted) {
+          if (user) {
+            setCurrentUser(user);
+            apiService
+              .getLiveRecords(user)
+              .then((liveRecords) => {
+                if (isMounted) setRecords(liveRecords);
+              })
+              .catch(() => {
+                if (isMounted) setRecords([]);
+              });
+          } else if (!storedUser) {
+            setCurrentUser(null);
           }
         }
-      } catch {
-        // User not authenticated
+      } catch (err) {
+        console.warn("[Home] Session init warning:", err);
       } finally {
         if (isMounted) setIsInitializing(false);
       }
@@ -216,7 +229,7 @@ export default function Home() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-3 border-indigo-600/30 border-t-indigo-600 rounded-full animate-spin" />
+          <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
           <span className="text-xs font-semibold text-slate-500">Loading portal...</span>
         </div>
       </div>

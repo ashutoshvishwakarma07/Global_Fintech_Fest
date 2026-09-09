@@ -15,9 +15,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Service to generate rich, formatted Excel (.xlsx) spreadsheets using Apache POI.
@@ -39,6 +41,12 @@ public class ExcelReportService {
      * @return Raw byte array of .xlsx workbook
      */
     public byte[] generateDailyOcrReport(List<VisitingCard> documents, LocalDate reportDate, Map<String, Object> summaryStats) {
+        Map<String, Long> userWiseCounts = extractUserWiseCounts(documents);
+        return generateReport(documents, "Daily OCR & Upload Summary", reportDate, summaryStats, userWiseCounts);
+    }
+
+    public byte[] generateReport(List<VisitingCard> documents, String reportTitle, LocalDate reportDate,
+                                Map<String, Object> summaryStats, Map<String, Long> userWiseCounts) {
         try (Workbook workbook = new XSSFWorkbook();
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 
@@ -66,19 +74,69 @@ public class ExcelReportService {
             Row titleRow = summarySheet.createRow(sumRowIdx++);
             titleRow.setHeightInPoints(28);
             Cell titleCell = titleRow.createCell(0);
-            titleCell.setCellValue("Global Fintech Fest (GFF) - Daily OCR & Upload Summary");
+            titleCell.setCellValue("Global Fintech Fest (GFF) - " + (reportTitle != null ? reportTitle : "OCR & Upload Summary"));
             titleCell.setCellStyle(summaryTitleStyle);
-            summarySheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 3));
+            summarySheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 4));
 
             // Date Subtitle
             Row dateRow = summarySheet.createRow(sumRowIdx++);
             Cell dateCell = dateRow.createCell(0);
             dateCell.setCellValue("Report Generated For: " + reportDate.format(DateTimeFormatter.ofPattern("dd MMMM yyyy")));
-            summarySheet.addMergedRegion(new CellRangeAddress(1, 1, 0, 3));
+            summarySheet.addMergedRegion(new CellRangeAddress(1, 1, 0, 4));
 
             sumRowIdx++; // Blank spacing row
 
-            // Metrics Table Header
+            // ==========================================
+            // SECTION A: User-wise Upload Breakdown
+            // ==========================================
+            Row userSecRow = summarySheet.createRow(sumRowIdx++);
+            userSecRow.setHeightInPoints(22);
+            Cell userSecCell = userSecRow.createCell(0);
+            userSecCell.setCellValue("User-Wise Upload Breakdown");
+            userSecCell.setCellStyle(summaryTitleStyle);
+            summarySheet.addMergedRegion(new CellRangeAddress(sumRowIdx - 1, sumRowIdx - 1, 0, 2));
+
+            Row userTblHeader = summarySheet.createRow(sumRowIdx++);
+            userTblHeader.setHeightInPoints(20);
+            Cell uh1 = userTblHeader.createCell(0); uh1.setCellValue("User / Uploader"); uh1.setCellStyle(headerStyle);
+            Cell uh2 = userTblHeader.createCell(1); uh2.setCellValue("Cards Uploaded"); uh2.setCellStyle(headerStyle);
+            Cell uh3 = userTblHeader.createCell(2); uh3.setCellValue("Share of Total"); uh3.setCellStyle(headerStyle);
+
+            long totalDocs = documents != null ? documents.size() : 0;
+            if (userWiseCounts == null || userWiseCounts.isEmpty()) {
+                userWiseCounts = extractUserWiseCounts(documents);
+            }
+
+            for (Map.Entry<String, Long> entry : userWiseCounts.entrySet()) {
+                Row row = summarySheet.createRow(sumRowIdx++);
+                row.setHeightInPoints(18);
+
+                Cell nameCell = row.createCell(0);
+                nameCell.setCellValue(entry.getKey());
+                nameCell.setCellStyle(dataRowStyle);
+
+                Cell countCell = row.createCell(1);
+                countCell.setCellValue(entry.getValue());
+                countCell.setCellStyle(metricValueStyle);
+
+                Cell pctCell = row.createCell(2);
+                double pct = totalDocs > 0 ? ((double) entry.getValue() / totalDocs) * 100.0 : 0.0;
+                pctCell.setCellValue(String.format("%.1f%%", pct));
+                pctCell.setCellStyle(dataRowStyle);
+            }
+
+            // Total row in User-wise table
+            Row userTotalRow = summarySheet.createRow(sumRowIdx++);
+            userTotalRow.setHeightInPoints(20);
+            Cell ut1 = userTotalRow.createCell(0); ut1.setCellValue("Total"); ut1.setCellStyle(headerStyle);
+            Cell ut2 = userTotalRow.createCell(1); ut2.setCellValue(totalDocs); ut2.setCellStyle(headerStyle);
+            Cell ut3 = userTotalRow.createCell(2); ut3.setCellValue("100.0%"); ut3.setCellStyle(headerStyle);
+
+            sumRowIdx++; // Blank spacing row
+
+            // ==========================================
+            // SECTION B: Overall Processing Metrics
+            // ==========================================
             Row metricsHeaderRow = summarySheet.createRow(sumRowIdx++);
             metricsHeaderRow.setHeightInPoints(22);
             Cell mhc1 = metricsHeaderRow.createCell(0);
@@ -88,13 +146,13 @@ public class ExcelReportService {
             mhc2.setCellValue("Count / Value");
             mhc2.setCellStyle(headerStyle);
 
-            long total = summaryStats.get("total") != null ? ((Number) summaryStats.get("total")).longValue() : 0;
+            long total = summaryStats.get("total") != null ? ((Number) summaryStats.get("total")).longValue() : totalDocs;
             long completed = summaryStats.get("completed") != null ? ((Number) summaryStats.get("completed")).longValue() : 0;
             long failed = summaryStats.get("failed") != null ? ((Number) summaryStats.get("failed")).longValue() : 0;
             double successRate = summaryStats.get("successRate") != null ? ((Number) summaryStats.get("successRate")).doubleValue() : 0.0;
 
             Object[][] metrics = {
-                    {"Total Documents Uploaded", total},
+                    {"Total Documents in Scope", total},
                     {"Successfully Processed (OCR Completed)", completed},
                     {"Failed OCR / Flagged for Review", failed},
                     {"Success Rate (%)", String.format("%.1f%%", successRate)}
@@ -120,7 +178,7 @@ public class ExcelReportService {
             Cell secCell = cardsSecRow.createCell(0);
             secCell.setCellValue("Extracted Visiting Cards - OCR Data Summary");
             secCell.setCellStyle(summaryTitleStyle);
-            summarySheet.addMergedRegion(new CellRangeAddress(sumRowIdx - 1, sumRowIdx - 1, 0, 15));
+            summarySheet.addMergedRegion(new CellRangeAddress(sumRowIdx - 1, sumRowIdx - 1, 0, 16));
 
             // Tabular Header on Sheet 1 (Standardized 14 Fields + Meta)
             String[] summaryTableHeaders = {
@@ -163,7 +221,10 @@ public class ExcelReportService {
                 c15.setCellValue(card.getOcrStatus() != null ? card.getOcrStatus().name() : "UNKNOWN");
                 c15.setCellStyle(card.getOcrStatus() == OcrStatus.COMPLETED ? completedStatusStyle : failedStatusStyle);
 
-                Cell c16 = row.createCell(col++); c16.setCellValue(card.getUploaderEmail() != null ? card.getUploaderEmail() : "N/A"); c16.setCellStyle(dataRowStyle);
+                String uploaderDisplay = card.getUploaderName() != null && !card.getUploaderName().isBlank()
+                        ? card.getUploaderName() + " (" + (card.getUploaderEmail() != null ? card.getUploaderEmail() : "N/A") + ")"
+                        : (card.getUploaderEmail() != null ? card.getUploaderEmail() : "N/A");
+                Cell c16 = row.createCell(col++); c16.setCellValue(uploaderDisplay); c16.setCellStyle(dataRowStyle);
             }
 
             for (int i = 0; i < summaryTableHeaders.length; i++) {
@@ -307,7 +368,10 @@ public class ExcelReportService {
 
                 // 17. Uploaded By
                 Cell c17 = row.createCell(col++);
-                c17.setCellValue(card.getUploaderEmail() != null ? card.getUploaderEmail() : "N/A");
+                String fullUploader = card.getUploaderName() != null && !card.getUploaderName().isBlank()
+                        ? card.getUploaderName() + " (" + (card.getUploaderEmail() != null ? card.getUploaderEmail() : "N/A") + ")"
+                        : (card.getUploaderEmail() != null ? card.getUploaderEmail() : "N/A");
+                c17.setCellValue(fullUploader);
                 c17.setCellStyle(dataRowStyle);
 
                 // 18. S3 File URL (Clickable Hyperlink)
@@ -454,5 +518,26 @@ public class ExcelReportService {
         style.setBorderLeft(BorderStyle.THIN);
         style.setBorderRight(BorderStyle.THIN);
         return style;
+    }
+
+    public Map<String, Long> extractUserWiseCounts(List<VisitingCard> documents) {
+        if (documents == null || documents.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return documents.stream().collect(
+                Collectors.groupingBy(
+                        card -> {
+                            if (card.getUploaderName() != null && !card.getUploaderName().isBlank()) {
+                                return card.getUploaderName() + (card.getUploaderEmail() != null ? " (" + card.getUploaderEmail() + ")" : "");
+                            } else if (card.getUploaderEmail() != null && !card.getUploaderEmail().isBlank()) {
+                                return card.getUploaderEmail();
+                            } else {
+                                return "Unknown User";
+                            }
+                        },
+                        LinkedHashMap::new,
+                        Collectors.counting()
+                )
+        );
     }
 }

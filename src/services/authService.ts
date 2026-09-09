@@ -209,12 +209,18 @@ export const authService = {
     }
 
     try {
+      const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+      const timeoutId = controller ? setTimeout(() => controller.abort(), 3500) : null;
+
       const response = await fetch(`${API_BASE_URL}/auth/me`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
         },
         credentials: "include",
+        signal: controller?.signal,
+      }).finally(() => {
+        if (timeoutId) clearTimeout(timeoutId);
       });
 
       if (!response.ok) {

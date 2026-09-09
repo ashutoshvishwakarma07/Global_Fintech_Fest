@@ -27,6 +27,7 @@ import {
   AlertCircle,
   Send,
   RefreshCw,
+  FileSpreadsheet,
 } from "lucide-react";
 
 interface UploaderDropdownProps {
@@ -181,27 +182,48 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
   const [selectedRecord, setSelectedRecord] = useState<UploadRecord | null>(null);
   const [sharingRecord, setSharingRecord] = useState<UploadRecord | null>(null);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
-  const [isTriggeringReport, setIsTriggeringReport] = useState(false);
+  const [isTriggeringTodayReport, setIsTriggeringTodayReport] = useState(false);
+  const [isTriggeringAllReports, setIsTriggeringAllReports] = useState(false);
 
   const isAdmin = currentUser.role === "Admin";
 
-  const handleTriggerDailyReport = async () => {
-    setIsTriggeringReport(true);
+  const handleTriggerTodayReport = async () => {
+    setIsTriggeringTodayReport(true);
     try {
-      const res = await apiService.triggerDailyReportEmail();
+      const res = await apiService.triggerTodayReportEmail();
       onNotify?.(
         "success",
-        "Daily Report Email Dispatched",
-        res.message || "Processed pending cards & sent daily Excel report to team leads."
+        "Today's Report Dispatched",
+        res.message || "Today's Excel report & user-wise summary sent to team leads."
       );
     } catch (err: any) {
       onNotify?.(
         "error",
-        "Email Report Failed",
-        err.message || "Failed to trigger daily OCR report email."
+        "Today's Report Failed",
+        err.message || "Failed to trigger Today's OCR report email."
       );
     } finally {
-      setIsTriggeringReport(false);
+      setIsTriggeringTodayReport(false);
+    }
+  };
+
+  const handleTriggerAllReports = async () => {
+    setIsTriggeringAllReports(true);
+    try {
+      const res = await apiService.triggerAllReportsEmail();
+      onNotify?.(
+        "success",
+        "All Reports Dispatched",
+        res.message || "All completed OCR records report & user-wise summary sent to team leads."
+      );
+    } catch (err: any) {
+      onNotify?.(
+        "error",
+        "All Reports Failed",
+        err.message || "Failed to trigger All Reports email."
+      );
+    } finally {
+      setIsTriggeringAllReports(false);
     }
   };
 
@@ -428,27 +450,46 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center justify-between sm:justify-end gap-2.5 pt-2.5 sm:pt-0 border-t border-white/10 sm:border-t-0 shrink-0">
+          <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 pt-2.5 sm:pt-0 border-t border-white/10 sm:border-t-0 shrink-0">
             <span className="inline-flex items-center px-2.5 py-1 bg-white/10 rounded-lg text-xs font-semibold text-purple-100">
               <span className="text-purple-200 mr-1.5 font-normal">Records:</span>
               {records.length} Total
             </span>
             <button
               type="button"
-              onClick={handleTriggerDailyReport}
-              disabled={isTriggeringReport}
-              title="Process pending OCR and email daily Excel report to team leads"
-              className="inline-flex items-center justify-center gap-2 py-2 px-3.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs shadow-sm backdrop-blur-sm transition-all active:scale-95 disabled:opacity-60 cursor-pointer border border-white/20 whitespace-nowrap shrink-0"
+              onClick={handleTriggerTodayReport}
+              disabled={isTriggeringTodayReport || isTriggeringAllReports}
+              title="Fetch only today's uploaded records from database, generate Excel report, and email team leads"
+              className="inline-flex items-center justify-center gap-1.5 py-2 px-3 sm:px-3.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs shadow-sm backdrop-blur-sm transition-all active:scale-95 disabled:opacity-60 cursor-pointer border border-white/20 whitespace-nowrap shrink-0"
             >
-              {isTriggeringReport ? (
+              {isTriggeringTodayReport ? (
                 <>
                   <RefreshCw className="w-3.5 h-3.5 animate-spin text-white shrink-0" />
-                  <span>Sending Report...</span>
+                  <span>Sending Today's...</span>
                 </>
               ) : (
                 <>
-                  <Send className="w-3.5 h-3.5 shrink-0" />
-                  <span>Trigger Email Report</span>
+                  <Calendar className="w-3.5 h-3.5 shrink-0 text-purple-200" />
+                  <span>Today’s Report</span>
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={handleTriggerAllReports}
+              disabled={isTriggeringTodayReport || isTriggeringAllReports}
+              title="Fetch all completed OCR records from database without date filter, generate Excel report, and email team leads"
+              className="inline-flex items-center justify-center gap-1.5 py-2 px-3 sm:px-3.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs shadow-sm backdrop-blur-sm transition-all active:scale-95 disabled:opacity-60 cursor-pointer border border-white/20 whitespace-nowrap shrink-0"
+            >
+              {isTriggeringAllReports ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-white shrink-0" />
+                  <span>Sending All...</span>
+                </>
+              ) : (
+                <>
+                  <FileSpreadsheet className="w-3.5 h-3.5 shrink-0 text-emerald-300" />
+                  <span>All Reports</span>
                 </>
               )}
             </button>

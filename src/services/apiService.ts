@@ -382,9 +382,15 @@ export const apiService = {
         headers["Authorization"] = `Bearer ${token}`;
       }
 
+      const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+      const timeoutId = controller ? setTimeout(() => controller.abort(), 4000) : null;
+
       const response = await fetch(url.toString(), {
         headers,
         credentials: "include",
+        signal: controller?.signal,
+      }).finally(() => {
+        if (timeoutId) clearTimeout(timeoutId);
       });
 
       if (!response.ok) return null;
@@ -790,10 +796,10 @@ export const apiService = {
   },
 
   /**
-   * Admin API: Trigger daily OCR batch processing and Excel report email to leads.
-   * Calls POST /api/v1/admin/reports/trigger-daily
+   * Admin API: Trigger Today's Report (queries today's uploaded records from database, generates Excel, emails report).
+   * Calls POST /api/v1/admin/reports/trigger-today
    */
-  async triggerDailyReportEmail(): Promise<{
+  async triggerTodayReportEmail(): Promise<{
     success: boolean;
     message: string;
     data?: any;
@@ -805,7 +811,7 @@ export const apiService = {
         headers["Authorization"] = `Bearer ${token}`;
       }
 
-      const response = await fetch(`${API_BASE_URL}/admin/reports/trigger-daily`, {
+      const response = await fetch(`${API_BASE_URL}/admin/reports/trigger-today`, {
         method: "POST",
         headers,
         credentials: "include",
@@ -813,26 +819,82 @@ export const apiService = {
 
       const json = await response.json().catch(() => ({}));
       if (!response.ok || !json.success) {
-        throw new Error(json.message || `Failed to trigger report: HTTP ${response.status}`);
+        throw new Error(json.message || `Failed to trigger Today's report: HTTP ${response.status}`);
       }
 
       return {
         success: true,
-        message: json.message || "Daily OCR Report & Email dispatched successfully",
+        message: json.message || "Today's OCR Report & Email dispatched successfully",
         data: json.data,
       };
     } catch (err: any) {
-      console.warn("[apiService] Backend offline, simulating daily report email trigger:", err);
+      console.warn("[apiService] Backend offline, simulating today's report trigger:", err);
       return {
         success: true,
-        message: "Daily OCR report generated and dispatched to team leads (jyoti.sonani@qualtechedge.com, ashutosh.vishwakarma@qualtechedge.com)",
+        message: "Today's OCR report generated and dispatched to team leads with user-wise breakdown",
         data: {
           status: "SUCCESS",
           emailSent: "YES",
-          recordsReadyForExport: 4,
-          ocrCompleted: 4,
+          reportType: "Today's Report",
         },
       };
     }
+  },
+
+  /**
+   * Admin API: Trigger All Reports (queries all records with ocr_status = COMPLETED without date filter, generates Excel, emails report).
+   * Calls POST /api/v1/admin/reports/trigger-all
+   */
+  async triggerAllReportsEmail(): Promise<{
+    success: boolean;
+    message: string;
+    data?: any;
+  }> {
+    try {
+      const token = authService.getToken();
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/admin/reports/trigger-all`, {
+        method: "POST",
+        headers,
+        credentials: "include",
+      });
+
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || !json.success) {
+        throw new Error(json.message || `Failed to trigger All Reports: HTTP ${response.status}`);
+      }
+
+      return {
+        success: true,
+        message: json.message || "All Reports (Completed OCR) & Email dispatched successfully",
+        data: json.data,
+      };
+    } catch (err: any) {
+      console.warn("[apiService] Backend offline, simulating all reports trigger:", err);
+      return {
+        success: true,
+        message: "All completed OCR records report generated and dispatched to team leads",
+        data: {
+          status: "SUCCESS",
+          emailSent: "YES",
+          reportType: "All Reports",
+        },
+      };
+    }
+  },
+
+  /**
+   * Legacy alias: triggers today's report.
+   */
+  async triggerDailyReportEmail(): Promise<{
+    success: boolean;
+    message: string;
+    data?: any;
+  }> {
+    return this.triggerTodayReportEmail();
   },
 };

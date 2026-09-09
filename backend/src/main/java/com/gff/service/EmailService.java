@@ -61,7 +61,26 @@ public class EmailService {
 
     public String sendDailyOcrReport(byte[] excelBytes, LocalDate reportDate, Map<String, Object> stats, List<VisitingCard> cards) {
         String dateStr = reportDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-        String attachmentFileName = "Daily_OCR_Report_" + dateStr + ".xlsx";
+        String attachmentFileName = "Today_OCR_Report_" + dateStr + ".xlsx";
+        return sendReport("Today's Report", excelBytes, attachmentFileName, reportDate, stats, null, cards);
+    }
+
+    /**
+     * Dispatches OCR report email with .xlsx attachment to configured team lead recipients.
+     *
+     * @param reportType         Type of report (e.g. "Today's Report", "All Reports")
+     * @param excelBytes         Byte array of generated Excel workbook
+     * @param attachmentFileName Name of the attached .xlsx file
+     * @param reportDate         Date of report
+     * @param stats              Summary statistics (total, completed, failed, successRate)
+     * @param userWiseCounts     User-wise upload distribution map
+     * @param cards              List of visiting card entities
+     * @return Result status description
+     */
+    public String sendReport(String reportType, byte[] excelBytes, String attachmentFileName,
+                             LocalDate reportDate, Map<String, Object> stats,
+                             Map<String, Long> userWiseCounts, List<VisitingCard> cards) {
+        String dateStr = reportDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 
         // Always save a persistent copy to disk for safety and inspection
         saveReportBackupToDisk(excelBytes, attachmentFileName);
@@ -91,9 +110,11 @@ public class EmailService {
 
             helper.setFrom(fromEmail);
             helper.setTo(recipients);
-            helper.setSubject("[Daily Report] OCR Processing & Upload Summary - " + dateStr);
 
-            String htmlBody = buildHtmlEmailBody(dateStr, stats, cards);
+            String subject = "[%s] OCR Processing & Upload Summary - %s".formatted(reportType, dateStr);
+            helper.setSubject(subject);
+
+            String htmlBody = buildHtmlEmailBody(reportType, dateStr, stats, userWiseCounts, cards, attachmentFileName);
             helper.setText(htmlBody, true);
 
             ByteArrayResource attachmentResource = new ByteArrayResource(excelBytes);
@@ -103,14 +124,14 @@ public class EmailService {
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             );
 
-            log.info("Sending Daily OCR Report email to: {} with attachment {}", Arrays.toString(recipients), attachmentFileName);
+            log.info("Sending {} email to: {} with attachment {}", reportType, Arrays.toString(recipients), attachmentFileName);
             mailSender.send(message);
-            log.info("Daily OCR Report email successfully delivered to {}", Arrays.toString(recipients));
+            log.info("{} email successfully delivered to {}", reportType, Arrays.toString(recipients));
 
             return "SUCCESS: Email delivered to " + String.join(", ", recipients);
 
         } catch (MessagingException e) {
-            log.error("Failed to construct MimeMessage for daily OCR report: {}", e.getMessage(), e);
+            log.error("Failed to construct MimeMessage for report: {}", e.getMessage(), e);
             return "ERROR: MessagingException - " + e.getMessage();
         } catch (Exception e) {
             log.warn("Standard JavaMailSender encountered issue: {}. Activating resilient direct SMTP channel with SNI bypass...", e.getMessage());
@@ -219,11 +240,48 @@ public class EmailService {
         }
     }
 
-    private String buildHtmlEmailBody(String dateStr, Map<String, Object> stats, List<VisitingCard> cards) {
+    private String buildHtmlEmailBody(String reportType, String dateStr, Map<String, Object> stats,
+                                      Map<String, Long> userWiseCounts, List<VisitingCard> cards,
+                                      String attachmentFileName) {
         long totalDocs = stats.get("total") != null ? ((Number) stats.get("total")).longValue() : 0;
         long completedDocs = stats.get("completed") != null ? ((Number) stats.get("completed")).longValue() : 0;
         long failedDocs = stats.get("failed") != null ? ((Number) stats.get("failed")).longValue() : 0;
         double successRate = stats.get("successRate") != null ? ((Number) stats.get("successRate")).doubleValue() : 0.0;
+
+        // Build User-wise summary string and table rows
+        StringBuilder userRowsHtml = new StringBuilder();
+        StringBuilder userSummaryText = new StringBuilder();
+
+        if (userWiseCounts != null && !userWiseCounts.isEmpty()) {
+            int idx = 0;
+            for (Map.Entry<String, Long> entry : userWiseCounts.entrySet()) {
+                String uploader = entry.getKey();
+                Long count = entry.getValue();
+                double pct = totalDocs > 0 ? ((double) count / totalDocs) * 100.0 : 0.0;
+
+                if (idx > 0) userSummaryText.append(", ");
+                userSummaryText.append(uploader).append(" – ").append(count);
+
+                userRowsHtml.append("""
+                    <tr>
+                      <td style="padding: 10px 14px; border-bottom: 1px solid #e2e8f0; font-weight: 500; color: #1e293b;">%s</td>
+                      <td style="padding: 10px 14px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: bold; color: #2563eb;">%d</td>
+                      <td style="padding: 10px 14px; border-bottom: 1px solid #e2e8f0; text-align: right; color: #64748b;">%.1f%%</td>
+                    </tr>
+                    """.formatted(uploader, count, pct));
+                idx++;
+            }
+            if (userSummaryText.length() > 0) {
+                userSummaryText.append(", Total – ").append(totalDocs);
+            }
+        } else {
+            userSummaryText.append("Total – ").append(totalDocs);
+            userRowsHtml.append("""
+                <tr>
+                  <td colspan="3" style="padding: 12px 14px; text-align: center; color: #94a3b8;">No uploader data available</td>
+                </tr>
+                """);
+        }
 
         return """
             <!DOCTYPE html>
@@ -237,6 +295,11 @@ public class EmailService {
                 .header h2 { margin: 0; font-size: 18px; }
                 .header p { margin: 4px 0 0 0; font-size: 12px; opacity: 0.8; }
                 .content { padding: 20px; }
+                .summary-line-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #334155; }
+                .summary-line-title { font-weight: bold; color: #1e3a8a; margin-bottom: 4px; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+                .user-table { width: 100%%; border-collapse: collapse; margin: 16px 0; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; }
+                .user-table th { background: #f1f5f9; padding: 10px 14px; font-size: 12px; font-weight: bold; color: #475569; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; }
+                .user-table tfoot td { background: #f8fafc; padding: 10px 14px; font-size: 13px; font-weight: bold; color: #0f172a; border-top: 2px solid #cbd5e1; }
                 .stats-table { width: 100%%; border-collapse: separate; border-spacing: 8px 0; margin: 15px 0; }
                 .stat-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; text-align: center; }
                 .stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: bold; }
@@ -248,15 +311,43 @@ public class EmailService {
             <body>
               <div class="container">
                 <div class="header">
-                  <h2>Global Fintech Fest (GFF) — Daily OCR Report</h2>
-                  <p>Date: %s | Automated Daily Audit</p>
+                  <h2>Global Fintech Fest (GFF) — %s</h2>
+                  <p>Date: %s | Report Generated Automatically</p>
                 </div>
                 <div class="content">
                   <p style="color: #334155; font-size: 14px; margin: 0 0 10px 0;">Hello Team Lead,</p>
                   <p style="color: #64748b; font-size: 13px; line-height: 1.5; margin: 0 0 15px 0;">
-                    The daily visiting card OCR processing has completed. Below is today's summary:
+                    Please find below the visiting card OCR upload and processing summary:
                   </p>
 
+                  <!-- Quick User-wise Summary Line -->
+                  <div class="summary-line-box">
+                    <div class="summary-line-title">📊 User-Wise Upload Summary</div>
+                    <div style="font-weight: 600;">%s</div>
+                  </div>
+
+                  <!-- User-wise Distribution Table -->
+                  <table class="user-table">
+                    <thead>
+                      <tr>
+                        <th style="text-align: left;">User / Uploader</th>
+                        <th style="text-align: right;">Cards Uploaded</th>
+                        <th style="text-align: right;">Share</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      %s
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td style="text-align: left;">Total</td>
+                        <td style="text-align: right; color: #2563eb;">%d</td>
+                        <td style="text-align: right;">100.0%%</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+
+                  <!-- Overall KPI Cards -->
                   <table class="stats-table">
                     <tr>
                       <td class="stat-card">
@@ -281,7 +372,7 @@ public class EmailService {
                   <div class="cta-box">
                     <p style="margin: 0; font-size: 13px; font-weight: bold; color: #1e40af;">📎 Detailed Report Attached</p>
                     <p style="margin: 4px 0 0 0; font-size: 12px; color: #3b82f6;">
-                      All extracted contact fields (Name, Company, Phone, Email, S3 URLs) are compiled in the attached <strong>Daily_OCR_Report_%s.xlsx</strong> spreadsheet.
+                      All extracted contact fields (Name, Company, Phone, Email, S3 URLs, Uploaded By) are compiled in the attached <strong>%s</strong> spreadsheet.
                     </p>
                   </div>
                 </div>
@@ -292,7 +383,18 @@ public class EmailService {
               </div>
             </body>
             </html>
-            """.formatted(dateStr, totalDocs, completedDocs, failedDocs, successRate, dateStr);
+            """.formatted(
+                reportType,
+                dateStr,
+                userSummaryText.toString(),
+                userRowsHtml.toString(),
+                totalDocs,
+                totalDocs,
+                completedDocs,
+                failedDocs,
+                successRate,
+                attachmentFileName
+            );
     }
 
     private void saveReportBackupToDisk(byte[] excelBytes, String fileName) {

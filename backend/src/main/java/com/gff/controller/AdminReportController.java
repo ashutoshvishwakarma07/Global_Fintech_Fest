@@ -24,27 +24,54 @@ public class AdminReportController {
     }
 
     /**
-     * Manual trigger endpoint for Admins to test the complete 4-step workflow:
-     * 1. Process pending OCR
-     * 2. Query today's documents
-     * 3. Generate Excel spreadsheet
-     * 4. Email report to team leads
+     * Today's Report trigger endpoint:
+     * Queries only today's uploaded records, aggregates user-wise counts, generates Excel, and emails report.
      *
+     * URL: POST /api/v1/admin/reports/trigger-today
+     */
+    @PostMapping("/trigger-today")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> triggerTodayReportPost() {
+        Map<String, Object> result = dailyOcrReportScheduler.runTodayReportWorkflow();
+        return ResponseEntity.ok(ApiResponse.success("Today's OCR Report Workflow triggered successfully", result));
+    }
+
+    @GetMapping("/trigger-today")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> triggerTodayReportGet() {
+        Map<String, Object> result = dailyOcrReportScheduler.runTodayReportWorkflow();
+        return ResponseEntity.ok(ApiResponse.success("Today's OCR Report Workflow triggered successfully", result));
+    }
+
+    /**
+     * All Reports trigger endpoint:
+     * Queries all records where ocr_status = COMPLETED (no date filter), aggregates user-wise counts, generates Excel, and emails report.
+     *
+     * URL: POST /api/v1/admin/reports/trigger-all
+     */
+    @PostMapping("/trigger-all")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> triggerAllReportsPost() {
+        Map<String, Object> result = dailyOcrReportScheduler.runAllReportsWorkflow();
+        return ResponseEntity.ok(ApiResponse.success("All Reports OCR Workflow triggered successfully", result));
+    }
+
+    @GetMapping("/trigger-all")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> triggerAllReportsGet() {
+        Map<String, Object> result = dailyOcrReportScheduler.runAllReportsWorkflow();
+        return ResponseEntity.ok(ApiResponse.success("All Reports OCR Workflow triggered successfully", result));
+    }
+
+    /**
+     * Legacy daily trigger alias (for backwards compatibility).
      * URL: POST /api/v1/admin/reports/trigger-daily
      */
     @PostMapping("/trigger-daily")
     public ResponseEntity<ApiResponse<Map<String, Object>>> triggerDailyReportPost() {
-        Map<String, Object> result = dailyOcrReportScheduler.runDailyReportWorkflow();
-        return ResponseEntity.ok(ApiResponse.success("Daily OCR Report Workflow triggered successfully", result));
+        Map<String, Object> result = dailyOcrReportScheduler.runTodayReportWorkflow();
+        return ResponseEntity.ok(ApiResponse.success("Today's OCR Report Workflow triggered successfully", result));
     }
 
-    /**
-     * GET alternative for browser testing.
-     * URL: GET /api/v1/admin/reports/trigger-daily
-     */
     @GetMapping("/trigger-daily")
     public ResponseEntity<ApiResponse<Map<String, Object>>> triggerDailyReportGet() {
-        Map<String, Object> result = dailyOcrReportScheduler.runDailyReportWorkflow();
-        return ResponseEntity.ok(ApiResponse.success("Daily OCR Report Workflow triggered successfully", result));
+        Map<String, Object> result = dailyOcrReportScheduler.runTodayReportWorkflow();
+        return ResponseEntity.ok(ApiResponse.success("Today's OCR Report Workflow triggered successfully", result));
     }
 }
