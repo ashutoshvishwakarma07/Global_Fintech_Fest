@@ -878,18 +878,18 @@ export const apiService = {
 
       return {
         success: true,
-        message: json.message || "All Reports (Completed OCR) & Email dispatched successfully",
+        message: json.message || "Consolidated Report (All Completed OCR) & Email dispatched successfully",
         data: json.data,
       };
     } catch (err: any) {
-      console.warn("[apiService] Backend offline, simulating all reports trigger:", err);
+      console.warn("[apiService] Backend offline, simulating consolidated report trigger:", err);
       return {
         success: true,
-        message: "All completed OCR records report generated and dispatched to team leads",
+        message: "Consolidated OCR records report generated and dispatched to team leads",
         data: {
           status: "SUCCESS",
           emailSent: "YES",
-          reportType: "All Reports",
+          reportType: "Consolidated Report",
         },
       };
     }

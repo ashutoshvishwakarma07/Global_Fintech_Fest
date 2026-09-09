@@ -213,14 +213,14 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
       const res = await apiService.triggerAllReportsEmail();
       onNotify?.(
         "success",
-        "All Reports Dispatched",
+        "Consolidated Report Dispatched",
         res.message || "All completed OCR records report & user-wise summary sent to team leads."
       );
     } catch (err: any) {
       onNotify?.(
         "error",
-        "All Reports Failed",
-        err.message || "Failed to trigger All Reports email."
+        "Consolidated Report Failed",
+        err.message || "Failed to trigger Consolidated Report email."
       );
     } finally {
       setIsTriggeringAllReports(false);
@@ -480,12 +480,12 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
               {isTriggeringAllReports ? (
                 <>
                   <RefreshCw className="w-3.5 h-3.5 animate-spin text-white shrink-0" />
-                  <span>Sending All...</span>
+                  <span>Sending Consolidated...</span>
                 </>
               ) : (
                 <>
                   <FileSpreadsheet className="w-3.5 h-3.5 shrink-0 text-emerald-300" />
-                  <span>All Reports</span>
+                  <span>Consolidated Report</span>
                 </>
               )}
             </button>
