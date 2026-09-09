@@ -1,4 +1,4 @@
-$tcp = New-Object System.Net.Sockets.TcpClient('smtp.gmail.com', 587)
+$tcp = New-Object System.Net.Sockets.TcpClient('smtp.bizmail.yahoo.com', 587)
 $stream = $tcp.GetStream()
 $reader = New-Object System.IO.StreamReader($stream)
 $writer = New-Object System.IO.StreamWriter($stream)
@@ -20,7 +20,7 @@ $callback = {
 
 $ssl = New-Object System.Net.Security.SslStream($stream, $false, $callback)
 try {
-    $ssl.AuthenticateAsClient('google.com')
+    $ssl.AuthenticateAsClient('smtp.bizmail.yahoo.com')
     Write-Host ">>> SSL AUTHENTICATE SUCCESS! <<<"
     $sslReader = New-Object System.IO.StreamReader($ssl)
     $sslWriter = New-Object System.IO.StreamWriter($ssl)
@@ -36,12 +36,12 @@ try {
     $sslWriter.WriteLine("AUTH LOGIN")
     Write-Host "AUTH LOGIN resp: $($sslReader.ReadLine())"
     
-    $uBase64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes('jyotilakhidhar96@gmail.com'))
+    $uBase64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes('alert@qualtechedge.com'))
     $sslWriter.WriteLine($uBase64)
     Write-Host "User resp: $($sslReader.ReadLine())"
     
     # Clean app password: remove spaces
-    $pBase64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes('niwvyxmtutzxkdsi'))
+    $pBase64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes('wgcdoupsprrenrjg'))
     $sslWriter.WriteLine($pBase64)
     Write-Host "Pass resp: $($sslReader.ReadLine())"
     

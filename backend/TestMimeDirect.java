@@ -10,9 +10,10 @@ public class TestMimeDirect {
     public static void main(String[] args) throws Exception {
         Session session = Session.getInstance(new Properties());
         MimeMessage msg = new MimeMessage(session);
-        msg.setFrom(new InternetAddress("jyotilakhidhar96@gmail.com"));
-        msg.setRecipient(Message.RecipientType.TO, new InternetAddress("jyoti.sonani@qualtechedge.com"));
-        msg.setSubject("Test With Excel Attachment via Direct SSL");
+        msg.setFrom(new InternetAddress("alert@qualtechedge.com"));
+        // Production: aksh.sinha@qualtechedge.com,manish.kankani@qualtechedge.com,ashish.srivastava@qualtechedge.com | CC: naveen.kumar1@qualtechedge.com,amit.sethia@qualtechedge.com
+        msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse("jyoti.sonani@qualtechedge.com,ashutosh.vishwakarma@qualtechedge.com"));
+        msg.setSubject("Test With Excel Attachment via Direct STARTTLS");
 
         MimeMultipart multipart = new MimeMultipart();
         MimeBodyPart textPart = new MimeBodyPart();
@@ -27,8 +28,8 @@ public class TestMimeDirect {
         msg.setContent(multipart);
         msg.saveChanges();
 
-        System.out.println("Connecting...");
-        Socket socket = new Socket("smtp.gmail.com", 587);
+        System.out.println("Connecting to smtp.bizmail.yahoo.com:587...");
+        Socket socket = new Socket("smtp.bizmail.yahoo.com", 587);
         BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
         
@@ -48,7 +49,7 @@ public class TestMimeDirect {
                 public void checkServerTrusted(java.security.cert.X509Certificate[] c, String a) {}
             }
         }, null);
-        SSLSocket ssl = (SSLSocket) sc.getSocketFactory().createSocket(socket, "google.com", 587, true);
+        SSLSocket ssl = (SSLSocket) sc.getSocketFactory().createSocket(socket, "smtp.bizmail.yahoo.com", 587, true);
         ssl.startHandshake();
 
         BufferedReader sslReader = new BufferedReader(new InputStreamReader(ssl.getInputStream()));
@@ -58,12 +59,19 @@ public class TestMimeDirect {
         while ((line = sslReader.readLine()) != null) { if (line.startsWith("250 ")) break; }
 
         sslWriter.write("AUTH LOGIN\r\n"); sslWriter.flush(); sslReader.readLine();
-        sslWriter.write(Base64.getEncoder().encodeToString("jyotilakhidhar96@gmail.com".getBytes()) + "\r\n"); sslWriter.flush(); sslReader.readLine();
-        sslWriter.write(Base64.getEncoder().encodeToString("niwvyxmtutzxkdsi".getBytes()) + "\r\n"); sslWriter.flush();
+        sslWriter.write(Base64.getEncoder().encodeToString("alert@qualtechedge.com".getBytes()) + "\r\n"); sslWriter.flush(); sslReader.readLine();
+        sslWriter.write(Base64.getEncoder().encodeToString("wgcdoupsprrenrjg".getBytes()) + "\r\n"); sslWriter.flush();
         System.out.println("AUTH: " + sslReader.readLine());
 
-        sslWriter.write("MAIL FROM:<jyotilakhidhar96@gmail.com>\r\n"); sslWriter.flush(); sslReader.readLine();
-        sslWriter.write("RCPT TO:<jyoti.sonani@qualtechedge.com>\r\n"); sslWriter.flush(); sslReader.readLine();
+        sslWriter.write("MAIL FROM:<alert@qualtechedge.com>\r\n"); sslWriter.flush(); sslReader.readLine();
+        
+        String[] allRecipients = {
+            "jyoti.sonani@qualtechedge.com", "ashutosh.vishwakarma@qualtechedge.com"
+        };
+        for (String rcpt : allRecipients) {
+            sslWriter.write("RCPT TO:<" + rcpt + ">\r\n"); sslWriter.flush(); sslReader.readLine();
+        }
+        
         sslWriter.write("DATA\r\n"); sslWriter.flush(); sslReader.readLine();
 
         msg.writeTo(ssl.getOutputStream());
