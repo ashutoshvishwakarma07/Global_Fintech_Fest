@@ -51,10 +51,10 @@ public class DailyOcrReportScheduler {
     }
 
     /**
-     * Legacy & scheduled cron runner: delegates to Today's Report workflow.
+     * Scheduled cron runner: delegates to Consolidated Reports workflow.
      */
     public Map<String, Object> runDailyReportWorkflow() {
-        return runTodayReportWorkflow();
+        return runAllReportsWorkflow();
     }
 
     /**
