@@ -80,7 +80,7 @@ $htmlContent = @"
 $base64Excel = [Convert]::ToBase64String($excelBytes)
 
 $mimeData = @"
-From: alert@qualtechedge.com
+From: visiting.cardapp@qualtechedge.in
 To: jyoti.sonani@qualtechedge.com, ashutosh.vishwakarma@qualtechedge.com
 Cc: naveen.kumar1@qualtechedge.com
 Subject: [Today's Report] OCR Processing & Upload Summary - $dateStr
@@ -103,8 +103,8 @@ $base64Excel
 --$boundary--
 "@
 
-Write-Host "Connecting to smtp.bizmail.yahoo.com:587..."
-$tcp = New-Object System.Net.Sockets.TcpClient('smtp.bizmail.yahoo.com', 587)
+Write-Host "Connecting to smtp.gmail.com:587..."
+$tcp = New-Object System.Net.Sockets.TcpClient('smtp.gmail.com', 587)
 $stream = $tcp.GetStream()
 $reader = New-Object System.IO.StreamReader($stream)
 $writer = New-Object System.IO.StreamWriter($stream)
@@ -121,7 +121,7 @@ $reader.ReadLine()
 
 $callback = { param($s, $c, $ch, $e) return $true }
 $ssl = New-Object System.Net.Security.SslStream($stream, $false, $callback)
-$ssl.AuthenticateAsClient('smtp.bizmail.yahoo.com')
+$ssl.AuthenticateAsClient('smtp.gmail.com')
 
 $sslReader = New-Object System.IO.StreamReader($ssl)
 $sslWriter = New-Object System.IO.StreamWriter($ssl)
@@ -134,13 +134,13 @@ while ($line = $sslReader.ReadLine()) {
 
 $sslWriter.WriteLine("AUTH LOGIN")
 $sslReader.ReadLine()
-$sslWriter.WriteLine([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes('alert@qualtechedge.com')))
+$sslWriter.WriteLine([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes('visiting.cardapp@qualtechedge.in')))
 $sslReader.ReadLine()
-$sslWriter.WriteLine([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes('wgcdoupsprrenrjg')))
+$sslWriter.WriteLine([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes('seto dqat wfoi jovo')))
 $auth = $sslReader.ReadLine()
 Write-Host "Auth result: $auth"
 
-$sslWriter.WriteLine("MAIL FROM:<alert@qualtechedge.com>")
+$sslWriter.WriteLine("MAIL FROM:<visiting.cardapp@qualtechedge.in>")
 $sslReader.ReadLine()
 # Production (Commented out):
 # $sslWriter.WriteLine("RCPT TO:<aksh.sinha@qualtechedge.com>")

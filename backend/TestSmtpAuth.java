@@ -5,8 +5,8 @@ import javax.net.ssl.*;
 
 public class TestSmtpAuth {
     public static void main(String[] args) throws Exception {
-        System.out.println("Connecting to smtp.bizmail.yahoo.com:587...");
-        Socket socket = new Socket("smtp.bizmail.yahoo.com", 587);
+        System.out.println("Connecting to smtp.gmail.com:587...");
+        Socket socket = new Socket("smtp.gmail.com", 587);
         BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
         
@@ -33,7 +33,7 @@ public class TestSmtpAuth {
         }, null);
         
         SSLSocketFactory factory = sslContext.getSocketFactory();
-        SSLSocket sslSocket = (SSLSocket) factory.createSocket(socket, "smtp.bizmail.yahoo.com", 587, true);
+        SSLSocket sslSocket = (SSLSocket) factory.createSocket(socket, "smtp.gmail.com", 587, true);
         sslSocket.startHandshake();
         System.out.println("Handshake complete!");
         
@@ -50,42 +50,42 @@ public class TestSmtpAuth {
         sslWriter.flush();
         sslReader.readLine();
         
-        sslWriter.write(Base64.getEncoder().encodeToString("alert@qualtechedge.com".getBytes()) + "\r\n");
+        sslWriter.write(Base64.getEncoder().encodeToString("visiting.cardapp@qualtechedge.in".getBytes()) + "\r\n");
         sslWriter.flush();
         sslReader.readLine();
         
-        sslWriter.write(Base64.getEncoder().encodeToString("wgcdoupsprrenrjg".getBytes()) + "\r\n");
+        sslWriter.write(Base64.getEncoder().encodeToString("seto dqat wfoi jovo".getBytes()) + "\r\n");
         sslWriter.flush();
         String authResp = sslReader.readLine();
-        System.out.println("PASS: " + authResp);
+        System.out.println("PASS / AUTH RESULT: " + authResp);
         
         // Send a test mail
-        sslWriter.write("MAIL FROM:<alert@qualtechedge.com>\r\n");
+        sslWriter.write("MAIL FROM:<visiting.cardapp@qualtechedge.in>\r\n");
         sslWriter.flush();
         System.out.println("MAIL FROM: " + sslReader.readLine());
         
-        // Production:
+        // Active test recipients
         String[] recipients = {
-            "aksh.sinha@qualtechedge.com", "manish.kankani@qualtechedge.com", "ashish.srivastava@qualtechedge.com",
-            "naveen.kumar1@qualtechedge.com", "amit.sethia@qualtechedge.com"
-            // Test mode: "jyoti.sonani@qualtechedge.com", "ashutosh.vishwakarma@qualtechedge.com"
+            "jyoti.sonani@qualtechedge.com",
+            "ashutosh.vishwakarma@qualtechedge.com",
+            "naveen.kumar1@qualtechedge.com"
         };
         for (String rcpt : recipients) {
             sslWriter.write("RCPT TO:<" + rcpt + ">\r\n");
             sslWriter.flush();
-            System.out.println("RCPT TO: " + sslReader.readLine());
+            System.out.println("RCPT TO (" + rcpt + "): " + sslReader.readLine());
         }
         
         sslWriter.write("DATA\r\n");
         sslWriter.flush();
         System.out.println("DATA: " + sslReader.readLine());
         
-        sslWriter.write("From: alert@qualtechedge.com\r\n");
+        sslWriter.write("From: visiting.cardapp@qualtechedge.in\r\n");
         sslWriter.write("To: jyoti.sonani@qualtechedge.com, ashutosh.vishwakarma@qualtechedge.com\r\n");
         sslWriter.write("Cc: naveen.kumar1@qualtechedge.com\r\n");
-        sslWriter.write("Subject: GFF OCR Automated Test Email\r\n");
+        sslWriter.write("Subject: GFF OCR Automated Test Email (Gmail SMTP Configured)\r\n");
         sslWriter.write("\r\n");
-        sslWriter.write("Hello, this is an automated test from GFF backend.\r\n");
+        sslWriter.write("Hello,\r\n\r\nThis is a test notification verifying that the Gmail SMTP service (visiting.cardapp@qualtechedge.in) has been successfully configured and verified.\r\n");
         sslWriter.write(".\r\n");
         sslWriter.flush();
         System.out.println("SEND RESULT: " + sslReader.readLine());
