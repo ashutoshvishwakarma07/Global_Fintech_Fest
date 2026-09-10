@@ -46,19 +46,19 @@ public class EmailService {
     @Value("${app.mail.cc-email:naveen.kumar1@qualtechedge.com}")
     private String ccEmailsConfig;
 
-    @Value("${app.mail.from-email:visiting.cardapp@qualtechedge.in}")
+    @Value("${app.mail.from-email:alert@qualtechedge.com}")
     private String fromEmail;
 
-    @Value("${spring.mail.host:smtp.gmail.com}")
+    @Value("${spring.mail.host:smtp.bizmail.yahoo.com}")
     private String smtpHost;
 
     @Value("${spring.mail.port:587}")
     private int smtpPort;
 
-    @Value("${spring.mail.username:visiting.cardapp@qualtechedge.in}")
+    @Value("${spring.mail.username:alert@qualtechedge.com}")
     private String smtpUsername;
 
-    @Value("${spring.mail.password:setodqatwfoijovo}")
+    @Value("${spring.mail.password:wgcdoupsprrenrjg}")
     private String smtpPassword;
 
     /**
