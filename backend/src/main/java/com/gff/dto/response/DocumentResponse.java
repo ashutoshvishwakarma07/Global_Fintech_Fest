@@ -66,8 +66,13 @@ public class DocumentResponse {
         response.setUploaderMobile(card.getUploaderMobile());
         response.setUploaderRole(card.getUploaderRole());
         String img = card.getImageUrl();
-        if (img == null || img.trim().isEmpty()) {
-            img = "/api/v1/documents/record/" + card.getRecordId() + "/image";
+        if (img == null || img.trim().isEmpty() || img.startsWith("data:image/")) {
+            if (card.getS3Key() != null && !card.getS3Key().isBlank()) {
+                String bucket = card.getS3Bucket() != null ? card.getS3Bucket() : "visiting-card-bkt";
+                img = "https://" + bucket + ".s3.ap-south-1.amazonaws.com/" + card.getS3Key();
+            } else {
+                img = "/api/v1/documents/record/" + card.getRecordId() + "/image";
+            }
         }
         response.setImageUrl(img);
         response.setS3Key(card.getS3Key());

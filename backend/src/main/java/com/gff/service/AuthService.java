@@ -63,7 +63,15 @@ public class AuthService {
                 jdbcTemplate.execute("ALTER TABLE visiting_cards ADD COLUMN IF NOT EXISTS country VARCHAR(128)");
                 jdbcTemplate.execute("ALTER TABLE visiting_cards ADD COLUMN IF NOT EXISTS linkedin VARCHAR(256)");
                 jdbcTemplate.execute("ALTER TABLE visiting_cards ADD COLUMN IF NOT EXISTS twitter VARCHAR(256)");
-                log.info("Visiting cards table schema verified.");
+                // Performance Indexes for instant querying
+                jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_vc_created_at ON visiting_cards (created_at DESC)");
+                jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_vc_uploader_email ON visiting_cards (uploader_email)");
+                jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_vc_status ON visiting_cards (status)");
+                jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_vc_ocr_status ON visiting_cards (ocr_status)");
+                // Clean up large base64 payloads to restore instant sub-100ms database response times
+                jdbcTemplate.execute("UPDATE visiting_cards SET image_url = CONCAT('https://visiting-card-bkt.s3.ap-south-1.amazonaws.com/', s3_key) WHERE image_url LIKE 'data:image/%' AND s3_key IS NOT NULL AND s3_key <> ''");
+                jdbcTemplate.execute("UPDATE visiting_cards SET image_url = CONCAT('/api/v1/documents/record/', record_id, '/image') WHERE image_url LIKE 'data:image/%'");
+                log.info("Visiting cards table schema, indexes, and image payload cleanup verified.");
             } catch (Exception e) {
                 log.warn("Notice updating schema/role constraint: {}", e.getMessage());
             }
