@@ -349,9 +349,11 @@ export const apiService = {
   /**
    * Fetch documents list from Spring Boot backend (/api/v1/documents).
    */
-  async fetchDocuments(userEmail: string, role: string, query = "", status?: string) {
+  async fetchDocuments(userEmail: string, role: string, query = "", status?: string, page = 0, size = 1000) {
     try {
       const url = new URL(`${API_BASE_URL}/documents`);
+      url.searchParams.set("page", String(page));
+      url.searchParams.set("size", String(size));
       if (query) url.searchParams.set("query", query);
       if (status && status !== "All") url.searchParams.set("status", status);
 
