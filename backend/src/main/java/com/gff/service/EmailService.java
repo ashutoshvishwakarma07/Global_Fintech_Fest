@@ -35,25 +35,25 @@ public class EmailService {
     @Autowired(required = false)
     private JavaMailSender mailSender;
 
-    @Value("${app.mail.lead-email:jyoti.sonani@qualtechedge.com,ashutosh.vishwakarma@qualtechedge.com}")
+    @Value("${app.mail.lead-email:}")
     private String leadEmailsConfig;
 
     @Value("${app.mail.cc-email:}")
     private String ccEmailsConfig;
 
-    @Value("${app.mail.from-email:alert@qualtechedge.com}")
+    @Value("${app.mail.from-email:visiting.cardapp@qualtechedge.in}")
     private String fromEmail;
 
-    @Value("${spring.mail.host:smtp.bizmail.yahoo.com}")
+    @Value("${spring.mail.host:smtp.gmail.com}")
     private String smtpHost;
 
     @Value("${spring.mail.port:587}")
     private int smtpPort;
 
-    @Value("${spring.mail.username:alert@qualtechedge.com}")
+    @Value("${spring.mail.username:visiting.cardapp@qualtechedge.in}")
     private String smtpUsername;
 
-    @Value("${spring.mail.password:wgcdoupsprrenrjg}")
+    @Value("${spring.mail.password:setodqatwfoijovo}")
     private String smtpPassword;
 
     /**
@@ -89,25 +89,74 @@ public class EmailService {
     public String sendReport(String reportType, byte[] excelBytes, String attachmentFileName,
                              LocalDate reportDate, Map<String, Object> stats,
                              Map<String, Long> userWiseCounts, List<VisitingCard> cards) {
+        return sendReport(reportType, excelBytes, attachmentFileName, reportDate, stats, userWiseCounts, cards, null, null);
+    }
+
+    /**
+     * Dispatches OCR report email with .xlsx attachment to dynamic or configured recipients.
+     *
+     * @param reportType         Type of report (e.g. "Today's Report", "Consolidated Reports")
+     * @param excelBytes         Byte array of generated Excel workbook
+     * @param attachmentFileName Name of the attached .xlsx file
+     * @param reportDate         Date of report
+     * @param stats              Summary statistics (total, completed, failed, successRate)
+     * @param userWiseCounts     User-wise upload distribution map
+     * @param cards              List of visiting card entities
+     * @param toEmails           Dynamic list of primary recipients (To)
+     * @param ccEmails           Dynamic list of copy recipients (CC)
+     * @return Result status description
+     */
+    public String sendReport(String reportType, byte[] excelBytes, String attachmentFileName,
+                             LocalDate reportDate, Map<String, Object> stats,
+                             Map<String, Long> userWiseCounts, List<VisitingCard> cards,
+                             List<String> toEmails, List<String> ccEmails) {
         String dateStr = reportDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 
         // Always save a persistent copy to disk for safety and inspection
         saveReportBackupToDisk(excelBytes, attachmentFileName);
 
-        String[] toRecipients = Arrays.stream(leadEmailsConfig.split(","))
-                .map(String::trim)
-                .filter(email -> !email.isEmpty())
-                .toArray(String[]::new);
+        java.util.LinkedHashSet<String> toSet = new java.util.LinkedHashSet<>();
+        if (toEmails != null && !toEmails.isEmpty()) {
+            for (String email : toEmails) {
+                if (email != null && !email.trim().isEmpty()) {
+                    toSet.add(email.trim().toLowerCase());
+                }
+            }
+        } else if (leadEmailsConfig != null && !leadEmailsConfig.trim().isEmpty()) {
+            for (String email : leadEmailsConfig.split(",")) {
+                if (email != null && !email.trim().isEmpty()) {
+                    toSet.add(email.trim().toLowerCase());
+                }
+            }
+        }
 
-        String[] ccRecipients = ccEmailsConfig != null
-                ? Arrays.stream(ccEmailsConfig.split(","))
-                        .map(String::trim)
-                        .filter(email -> !email.isEmpty())
-                        .toArray(String[]::new)
-                : new String[0];
+        java.util.LinkedHashSet<String> ccSet = new java.util.LinkedHashSet<>();
+        if (ccEmails != null && !ccEmails.isEmpty()) {
+            for (String email : ccEmails) {
+                if (email != null && !email.trim().isEmpty()) {
+                    String clean = email.trim().toLowerCase();
+                    // Prevent To/CC overlap
+                    if (!toSet.contains(clean)) {
+                        ccSet.add(clean);
+                    }
+                }
+            }
+        } else if (ccEmailsConfig != null && !ccEmailsConfig.trim().isEmpty()) {
+            for (String email : ccEmailsConfig.split(",")) {
+                if (email != null && !email.trim().isEmpty()) {
+                    String clean = email.trim().toLowerCase();
+                    if (!toSet.contains(clean)) {
+                        ccSet.add(clean);
+                    }
+                }
+            }
+        }
+
+        String[] toRecipients = toSet.toArray(String[]::new);
+        String[] ccRecipients = ccSet.toArray(String[]::new);
 
         if (toRecipients.length == 0) {
-            log.warn("No recipient emails configured in app.mail.lead-email.");
+            log.warn("No recipient emails provided for {} report dispatch.", reportType);
             return "SKIPPED: No recipient emails configured";
         }
 
@@ -167,7 +216,7 @@ public class EmailService {
      * by establishing a direct STARTTLS channel with the configured SMTP host.
      */
     private String sendDirectSmtp(MimeMessage message, String[] toRecipients, String[] ccRecipients, String attachmentFileName) {
-        String host = (smtpHost != null && !smtpHost.isBlank()) ? smtpHost.trim() : "smtp.bizmail.yahoo.com";
+        String host = (smtpHost != null && !smtpHost.isBlank()) ? smtpHost.trim() : "smtp.gmail.com";
         int port = smtpPort > 0 ? smtpPort : 587;
         try {
             log.info("Connecting to {}:{} via resilient direct channel...", host, port);

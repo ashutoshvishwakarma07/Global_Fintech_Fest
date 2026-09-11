@@ -81,7 +81,7 @@ $base64Excel = [Convert]::ToBase64String($excelBytes)
 
 $mimeData = @"
 From: visiting.cardapp@qualtechedge.in
-To: jyoti.sonani@qualtechedge.com, ashutosh.vishwakarma@qualtechedge.com
+To: recipient@example.com
 Subject: [Today's Report] OCR Processing & Upload Summary - $dateStr
 MIME-Version: 1.0
 Content-Type: multipart/mixed; boundary="$boundary"
@@ -141,10 +141,8 @@ Write-Host "Auth result: $auth"
 
 $sslWriter.WriteLine("MAIL FROM:<visiting.cardapp@qualtechedge.in>")
 $sslReader.ReadLine()
-# Active Recipients:
-$sslWriter.WriteLine("RCPT TO:<jyoti.sonani@qualtechedge.com>")
-$sslReader.ReadLine()
-$sslWriter.WriteLine("RCPT TO:<ashutosh.vishwakarma@qualtechedge.com>")
+# Dynamic Recipients:
+$sslWriter.WriteLine("RCPT TO:<recipient@example.com>")
 $sslReader.ReadLine()
 $sslWriter.WriteLine("DATA")
 $sslReader.ReadLine()

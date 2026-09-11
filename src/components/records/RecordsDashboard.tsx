@@ -7,6 +7,7 @@ import { RecordCard } from "./RecordCard";
 import { RecordTable } from "./RecordTable";
 import { RecordDetailModal } from "./RecordDetailModal";
 import { ShareLeadModal } from "./ShareLeadModal";
+import { ReportRecipientModal } from "./ReportRecipientModal";
 import { EmptyState } from "../common/EmptyState";
 import {
   Search,
@@ -186,6 +187,7 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
   const [selectedRecord, setSelectedRecord] = useState<UploadRecord | null>(null);
   const [sharingRecord, setSharingRecord] = useState<UploadRecord | null>(null);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const [recipientModalType, setRecipientModalType] = useState<"today" | "all" | null>(null);
   const [isTriggeringTodayReport, setIsTriggeringTodayReport] = useState(false);
   const [isTriggeringAllReports, setIsTriggeringAllReports] = useState(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -193,43 +195,53 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
 
   const isAdmin = currentUser.role === "Admin";
 
-  const handleTriggerTodayReport = async () => {
-    setIsTriggeringTodayReport(true);
-    try {
-      const res = await apiService.triggerTodayReportEmail();
-      onNotify?.(
-        "success",
-        "Today's Report Dispatched",
-        res.message || "Today's Excel report & user-wise summary sent to team leads."
-      );
-    } catch (err: any) {
-      onNotify?.(
-        "error",
-        "Today's Report Failed",
-        err.message || "Failed to trigger Today's OCR report email."
-      );
-    } finally {
-      setIsTriggeringTodayReport(false);
-    }
+  const handleOpenTodayReportModal = () => {
+    setRecipientModalType("today");
   };
 
-  const handleTriggerAllReports = async () => {
-    setIsTriggeringAllReports(true);
-    try {
-      const res = await apiService.triggerAllReportsEmail();
-      onNotify?.(
-        "success",
-        "Consolidated Report Dispatched",
-        res.message || "All completed OCR records report & user-wise summary sent to team leads."
-      );
-    } catch (err: any) {
-      onNotify?.(
-        "error",
-        "Consolidated Report Failed",
-        err.message || "Failed to trigger Consolidated Report email."
-      );
-    } finally {
-      setIsTriggeringAllReports(false);
+  const handleOpenAllReportsModal = () => {
+    setRecipientModalType("all");
+  };
+
+  const handleSendReportFromModal = async (to: string[], cc: string[]) => {
+    if (recipientModalType === "today") {
+      setIsTriggeringTodayReport(true);
+      try {
+        const res = await apiService.triggerTodayReportEmail(to, cc);
+        onNotify?.(
+          "success",
+          "Today's Report Dispatched",
+          res.message || "Today's Excel report & user-wise summary sent to selected recipients."
+        );
+        setRecipientModalType(null);
+      } catch (err: any) {
+        onNotify?.(
+          "error",
+          "Today's Report Failed",
+          err.message || "Failed to trigger Today's OCR report email."
+        );
+      } finally {
+        setIsTriggeringTodayReport(false);
+      }
+    } else if (recipientModalType === "all") {
+      setIsTriggeringAllReports(true);
+      try {
+        const res = await apiService.triggerAllReportsEmail(to, cc);
+        onNotify?.(
+          "success",
+          "Consolidated Report Dispatched",
+          res.message || "All completed OCR records report & user-wise summary sent to selected recipients."
+        );
+        setRecipientModalType(null);
+      } catch (err: any) {
+        onNotify?.(
+          "error",
+          "Consolidated Report Failed",
+          err.message || "Failed to trigger Consolidated Report email."
+        );
+      } finally {
+        setIsTriggeringAllReports(false);
+      }
     }
   };
 
@@ -488,9 +500,9 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
           <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 pt-2.5 sm:pt-0 border-t border-white/10 sm:border-t-0 shrink-0">
             <button
               type="button"
-              onClick={handleTriggerTodayReport}
+              onClick={handleOpenTodayReportModal}
               disabled={isTriggeringTodayReport || isTriggeringAllReports}
-              title="Fetch only today's uploaded records from database, generate Excel report, and email team leads"
+              title="Select recipients, generate Excel report for today's records, and dispatch email"
               className="inline-flex items-center justify-center gap-1.5 py-2 px-3 sm:px-3.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs shadow-sm backdrop-blur-sm transition-all active:scale-95 disabled:opacity-60 cursor-pointer border border-white/20 whitespace-nowrap shrink-0"
             >
               {isTriggeringTodayReport ? (
@@ -507,9 +519,9 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
             </button>
             <button
               type="button"
-              onClick={handleTriggerAllReports}
+              onClick={handleOpenAllReportsModal}
               disabled={isTriggeringTodayReport || isTriggeringAllReports}
-              title="Fetch all completed OCR records from database without date filter, generate Excel report, and email team leads"
+              title="Select recipients, generate Excel report for all completed OCR records, and dispatch email"
               className="inline-flex items-center justify-center gap-1.5 py-2 px-3 sm:px-3.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs shadow-sm backdrop-blur-sm transition-all active:scale-95 disabled:opacity-60 cursor-pointer border border-white/20 whitespace-nowrap shrink-0"
             >
               {isTriggeringAllReports ? (
@@ -1099,6 +1111,15 @@ export const RecordsDashboard: React.FC<RecordsDashboardProps> = ({
             onNotify("success", "Card Shared with Lead", msg);
           }
         }}
+      />
+
+      {/* Report Recipient Modal */}
+      <ReportRecipientModal
+        isOpen={Boolean(recipientModalType)}
+        reportType={recipientModalType || "today"}
+        onClose={() => setRecipientModalType(null)}
+        onSendReport={handleSendReportFromModal}
+        isSending={isTriggeringTodayReport || isTriggeringAllReports}
       />
     </div>
   );

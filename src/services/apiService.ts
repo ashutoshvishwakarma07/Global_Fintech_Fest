@@ -785,21 +785,29 @@ export const apiService = {
    * Admin API: Trigger Today's Report (queries today's uploaded records from database, generates Excel, emails report).
    * Calls POST /api/v1/admin/reports/trigger-today
    */
-  async triggerTodayReportEmail(): Promise<{
+  async triggerTodayReportEmail(to?: string[], cc?: string[]): Promise<{
     success: boolean;
     message: string;
     data?: any;
   }> {
     try {
       const token = authService.getToken();
-      const headers: Record<string, string> = {};
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
 
+      const body = JSON.stringify({
+        to: to && to.length > 0 ? to : [],
+        cc: cc && cc.length > 0 ? cc : [],
+      });
+
       const response = await fetch(`${API_BASE_URL}/admin/reports/trigger-today`, {
         method: "POST",
         headers,
+        body,
         credentials: "include",
       });
 
@@ -817,7 +825,7 @@ export const apiService = {
       console.warn("[apiService] Backend offline, simulating today's report trigger:", err);
       return {
         success: true,
-        message: "Today's OCR report generated and dispatched to team leads with user-wise breakdown",
+        message: "Today's OCR report generated and dispatched to recipients with user-wise breakdown",
         data: {
           status: "SUCCESS",
           emailSent: "YES",
@@ -831,21 +839,29 @@ export const apiService = {
    * Admin API: Trigger Consolidated Reports (queries all records with ocr_status = COMPLETED without date filter, generates Excel, emails report).
    * Calls POST /api/v1/admin/reports/trigger-all
    */
-  async triggerAllReportsEmail(): Promise<{
+  async triggerAllReportsEmail(to?: string[], cc?: string[]): Promise<{
     success: boolean;
     message: string;
     data?: any;
   }> {
     try {
       const token = authService.getToken();
-      const headers: Record<string, string> = {};
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
 
+      const body = JSON.stringify({
+        to: to && to.length > 0 ? to : [],
+        cc: cc && cc.length > 0 ? cc : [],
+      });
+
       const response = await fetch(`${API_BASE_URL}/admin/reports/trigger-all`, {
         method: "POST",
         headers,
+        body,
         credentials: "include",
       });
 
@@ -863,7 +879,7 @@ export const apiService = {
       console.warn("[apiService] Backend offline, simulating consolidated report trigger:", err);
       return {
         success: true,
-        message: "Consolidated OCR records report generated and dispatched to team leads",
+        message: "Consolidated OCR records report generated and dispatched to recipients",
         data: {
           status: "SUCCESS",
           emailSent: "YES",
@@ -876,11 +892,11 @@ export const apiService = {
   /**
    * Legacy alias: triggers today's report.
    */
-  async triggerDailyReportEmail(): Promise<{
+  async triggerDailyReportEmail(to?: string[], cc?: string[]): Promise<{
     success: boolean;
     message: string;
     data?: any;
   }> {
-    return this.triggerTodayReportEmail();
+    return this.triggerTodayReportEmail(to, cc);
   },
 };

@@ -53,7 +53,7 @@ class DailyOcrReportSchedulerTest {
         when(visitingCardRepository.findByCreatedAtBetween(any(), any())).thenReturn(Collections.emptyList());
         when(visitingCardRepository.findByOcrStatusAndEmailSentAtIsNull(any())).thenReturn(Collections.emptyList());
         when(excelReportService.generateReport(any(), any(), any(), any(), any())).thenReturn(new byte[]{1, 2});
-        when(emailService.sendReport(any(), any(), any(), any(), any(), any(), any())).thenReturn("SUCCESS: Email delivered");
+        when(emailService.sendReport(any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn("SUCCESS: Email delivered");
 
         Map<String, Object> result = scheduler.runTodayReportWorkflow();
 
@@ -91,7 +91,7 @@ class DailyOcrReportSchedulerTest {
 
         byte[] fakeExcel = new byte[]{1, 2, 3};
         when(excelReportService.generateReport(any(), eq("Today's OCR & Upload Summary"), any(), any(), any())).thenReturn(fakeExcel);
-        when(emailService.sendReport(eq("Today's Report"), eq(fakeExcel), any(), any(), any(), any(), any())).thenReturn("SUCCESS: Email delivered");
+        when(emailService.sendReport(eq("Today's Report"), eq(fakeExcel), any(), any(), any(), any(), any(), any(), any())).thenReturn("SUCCESS: Email delivered");
 
         Map<String, Object> result = scheduler.runTodayReportWorkflow();
 
@@ -126,7 +126,7 @@ class DailyOcrReportSchedulerTest {
 
         byte[] fakeExcel = new byte[]{4, 5, 6};
         when(excelReportService.generateReport(any(), eq("Consolidated Records OCR Report (Completed)"), any(), any(), any())).thenReturn(fakeExcel);
-        when(emailService.sendReport(eq("Consolidated Reports"), eq(fakeExcel), any(), any(), any(), any(), any())).thenReturn("SUCCESS: Email delivered");
+        when(emailService.sendReport(eq("Consolidated Reports"), eq(fakeExcel), any(), any(), any(), any(), any(), any(), any())).thenReturn("SUCCESS: Email delivered");
 
         Map<String, Object> result = scheduler.runAllReportsWorkflow();
 

@@ -51,7 +51,7 @@ public class DailyOcrReportScheduler {
     }
 
     /**
-     * Scheduled cron runner: delegates to Consolidated Reports workflow.
+     * Report runner: delegates to Consolidated Reports workflow.
      */
     public Map<String, Object> runDailyReportWorkflow() {
         return runAllReportsWorkflow();
@@ -66,6 +66,18 @@ public class DailyOcrReportScheduler {
      * 5. Dispatches email with Excel attachment and user-wise summary.
      */
     public Map<String, Object> runTodayReportWorkflow() {
+        return runTodayReportWorkflow(null, null);
+    }
+
+    /**
+     * "Today's Report" Workflow:
+     * 1. Queries only today's uploaded records from the database.
+     * 2. Automatically processes any pending OCR on today's items.
+     * 3. Calculates user-wise upload counts (e.g. User 1 – 10, User 2 – 20, Total – 30).
+     * 4. Generates a formatted Excel report (.xlsx).
+     * 5. Dispatches email with Excel attachment and user-wise summary to dynamic or configured recipients.
+     */
+    public Map<String, Object> runTodayReportWorkflow(List<String> toRecipients, List<String> ccRecipients) {
         Map<String, Object> result = new LinkedHashMap<>();
 
         if (!isJobRunning.compareAndSet(false, true)) {
@@ -162,7 +174,9 @@ public class DailyOcrReportScheduler {
                     today,
                     stats,
                     userWiseCounts,
-                    todayCards
+                    todayCards,
+                    toRecipients,
+                    ccRecipients
             );
             log.info("Today's Report email status: {}", emailStatus);
 
@@ -197,15 +211,19 @@ public class DailyOcrReportScheduler {
         }
     }
 
+    public Map<String, Object> runAllReportsWorkflow() {
+        return runAllReportsWorkflow(null, null);
+    }
+
     /**
      * "Consolidated Reports" Workflow:
      * 1. Fetches all uploaded records from the database without any date filter,
      *    with filter: ocr_status = COMPLETED.
      * 2. Computes user-wise upload counts across all completed records.
      * 3. Generates Excel report (.xlsx) containing all completed records.
-     * 4. Dispatches email with Excel attachment and user-wise summary.
+     * 4. Dispatches email with Excel attachment and user-wise summary to dynamic or configured recipients.
      */
-    public Map<String, Object> runAllReportsWorkflow() {
+    public Map<String, Object> runAllReportsWorkflow(List<String> toRecipients, List<String> ccRecipients) {
         Map<String, Object> result = new LinkedHashMap<>();
 
         if (!isJobRunning.compareAndSet(false, true)) {
@@ -256,7 +274,9 @@ public class DailyOcrReportScheduler {
                     today,
                     stats,
                     userWiseCounts,
-                    completedCards
+                    completedCards,
+                    toRecipients,
+                    ccRecipients
             );
             log.info("Consolidated Reports email status: {}", emailStatus);
 

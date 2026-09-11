@@ -66,8 +66,7 @@ public class TestSmtpAuth {
         
         // Recipients
         String[] recipients = {
-            "jyoti.sonani@qualtechedge.com",
-            "ashutosh.vishwakarma@qualtechedge.com"
+            "recipient@example.com"
         };
         for (String rcpt : recipients) {
             sslWriter.write("RCPT TO:<" + rcpt + ">\r\n");
@@ -80,8 +79,7 @@ public class TestSmtpAuth {
         System.out.println("DATA: " + sslReader.readLine());
         
         sslWriter.write("From: visiting.cardapp@qualtechedge.in\r\n");
-        sslWriter.write("To: jyoti.sonani@qualtechedge.com, ashutosh.vishwakarma@qualtechedge.com\r\n");
-        sslWriter.write("Cc: naveen.kumar1@qualtechedge.com\r\n");
+        sslWriter.write("To: recipient@example.com\r\n");
         sslWriter.write("Subject: GFF OCR Automated Test Email (Gmail SMTP Configured)\r\n");
         sslWriter.write("\r\n");
         sslWriter.write("Hello,\r\n\r\nThis is a test notification verifying that the Gmail SMTP service (visiting.cardapp@qualtechedge.in) has been successfully configured and verified.\r\n");

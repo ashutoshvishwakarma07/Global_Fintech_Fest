@@ -19,10 +19,10 @@ client.on('data', (d) => {
         send("HELO qualtechedge.com");
     } else if (resp.startsWith("250") && step === 1) {
         step = 2;
-        send("MAIL FROM:<alert@qualtechedge.com>");
+        send("MAIL FROM:<visiting.cardapp@qualtechedge.in>");
     } else if (resp.startsWith("250") && step === 2) {
         step = 3;
-        send("RCPT TO:<jyoti.sonani@qualtechedge.com>");
+        send("RCPT TO:<recipient@example.com>");
     } else if (resp.startsWith("250") && step === 3) {
         console.log(">>> RECIPIENT ACCEPTED BY QUALTECH MX! <<<");
         send("QUIT");

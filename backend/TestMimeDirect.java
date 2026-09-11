@@ -394,8 +394,8 @@ public class TestMimeDirect {
             </html>
             """.formatted(dateStr, userRowsHtml.toString(), totalDocs, attachmentFileName);
 
-        // 5. Send via direct STARTTLS SMTP to configured test recipients
-        msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse("jyoti.sonani@qualtechedge.com,ashutosh.vishwakarma@qualtechedge.com"));
+        // 5. Send via direct STARTTLS SMTP to configured recipients
+        msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse("recipient@example.com"));
         msg.setFrom(new InternetAddress("visiting.cardapp@qualtechedge.in", "Global Fintech Fest"));
         msg.setSubject("[Today's Report] OCR Processing & Upload Summary - " + dateStr);
 
@@ -452,7 +452,7 @@ public class TestMimeDirect {
             sslWriter.write("MAIL FROM:<visiting.cardapp@qualtechedge.in>\r\n"); sslWriter.flush(); sslReader.readLine();
 
             String[] allRecipients = {
-                "jyoti.sonani@qualtechedge.com", "ashutosh.vishwakarma@qualtechedge.com"
+                "recipient@example.com"
             };
             for (String rcpt : allRecipients) {
                 sslWriter.write("RCPT TO:<" + rcpt + ">\r\n"); sslWriter.flush(); sslReader.readLine();

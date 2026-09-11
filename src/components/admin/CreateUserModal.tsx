@@ -203,7 +203,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
                   <input
                     type="email"
                     required
-                    placeholder="colleague@qualtechedge.com"
+                    placeholder="colleague@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all placeholder:text-slate-400"
