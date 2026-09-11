@@ -219,39 +219,33 @@ export const apiService = {
       throw new Error("Network connection dropped during document upload transmission.");
     }
 
-    let extractedData: ExtractedData;
-    try {
-      extractedData = await extractVisitingCardOcr(payload.imageBlob || base64Data || "");
-    } catch (ocrErr) {
-      console.warn("[apiService] Local OCR Notice:", ocrErr);
-      extractedData = {
-        documentType: "Visiting Card",
-        documentNumber: "VC-" + payload.recordId,
-        name: null,
-        jobTitle: null,
-        companyName: null,
-        department: null,
-        emailAddress: null,
-        mobileNumber: null,
-        workNumber: null,
-        websiteUrl: null,
-        city: null,
-        state: null,
-        postalZipCode: null,
-        country: null,
-        linkedIn: null,
-        twitter: null,
-        cardHolderName: null,
-        extractedName: null,
-        designation: null,
-        extractedEmail: null,
-        extractedMobile: null,
-        extractedAddress: null,
-        website: null,
-        confidence: 0,
-        rawText: "",
-      };
-    }
+    let extractedData: ExtractedData = {
+      documentType: "Visiting Card",
+      documentNumber: "VC-" + payload.recordId,
+      name: null,
+      jobTitle: null,
+      companyName: null,
+      department: null,
+      emailAddress: null,
+      mobileNumber: null,
+      workNumber: null,
+      websiteUrl: null,
+      city: null,
+      state: null,
+      postalZipCode: null,
+      country: null,
+      linkedIn: null,
+      twitter: null,
+      cardHolderName: null,
+      extractedName: null,
+      designation: null,
+      extractedEmail: null,
+      extractedMobile: null,
+      extractedAddress: null,
+      website: null,
+      confidence: 0,
+      rawText: "",
+    };
 
     let s3Url = `https://visiting-card-bkt.s3.ap-south-1.amazonaws.com/visiting-cards/${payload.recordId}.jpg`;
     let serverUrl = "";

@@ -60,7 +60,8 @@ public class IrisService {
     }
 
     /**
-     * Authenticates with IRIS to obtain JWT access token.
+     * Authenticates with IRIS to obtain JWT access token with automatic retry mechanism.
+     * Retries up to 3 times with exponential backoff on transient errors.
      * POST /login
      */
     public synchronized String getAccessToken() {
@@ -68,32 +69,50 @@ public class IrisService {
             return cachedAccessToken;
         }
 
-        try {
-            Map<String, String> loginBody = Map.of(
-                    "applicationId", applicationId,
-                    "password", password
-            );
+        int maxRetries = 3;
+        long backoffMs = 800;
 
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(irisBaseUrl + "/login"))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(loginBody)))
-                    .build();
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                Map<String, String> loginBody = Map.of(
+                        "applicationId", applicationId != null ? applicationId : "42b9fd86-8f6d-403e-93a1-3a5856a7665e",
+                        "password", password != null ? password : "password1"
+                );
 
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() == 200) {
-                JsonNode json = objectMapper.readTree(response.body());
-                if (json.has("accessToken")) {
-                    this.cachedAccessToken = json.get("accessToken").asText();
-                    log.info("Successfully authenticated with IRIS API at {}/login", irisBaseUrl);
-                    return this.cachedAccessToken;
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(irisBaseUrl + "/login"))
+                        .timeout(Duration.ofSeconds(10))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(loginBody)))
+                        .build();
+
+                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                if (response.statusCode() == 200) {
+                    JsonNode json = objectMapper.readTree(response.body());
+                    if (json.has("accessToken") && !json.get("accessToken").isNull()) {
+                        this.cachedAccessToken = json.get("accessToken").asText();
+                        log.info("Successfully authenticated with IRIS API at {}/login (Attempt {}/{})", irisBaseUrl, attempt, maxRetries);
+                        return this.cachedAccessToken;
+                    }
+                }
+                log.warn("IRIS login attempt {}/{} failed with HTTP status {} from [{}/login]: {}",
+                        attempt, maxRetries, response.statusCode(), irisBaseUrl, response.body());
+            } catch (Exception e) {
+                log.warn("IRIS login attempt {}/{} encountered exception at [{}/login]: {} ({})",
+                        attempt, maxRetries, irisBaseUrl, e.getClass().getSimpleName(), e.getMessage());
+            }
+
+            if (attempt < maxRetries) {
+                try {
+                    Thread.sleep(backoffMs * attempt);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
                 }
             }
-            log.warn("IRIS login response status {} from [{}/login]: {}", response.statusCode(), irisBaseUrl, response.body());
-        } catch (Exception e) {
-            log.error("Failed to authenticate with IRIS API at [{}/login]: {} (Cause: {})",
-                    irisBaseUrl, e.getClass().getSimpleName(), (e.getMessage() != null ? e.getMessage() : e.getCause()));
         }
+
+        log.error("Failed to authenticate with IRIS API after {} attempts at [{}/login]", maxRetries, irisBaseUrl);
         return null;
     }
 
@@ -105,6 +124,11 @@ public class IrisService {
         try {
             String ref = (entityRef != null && !entityRef.trim().isEmpty()) ? entityRef.trim() : "ENT-1001";
 
+            String cleanBase64 = base64Image != null ? base64Image.trim() : "";
+            if (cleanBase64.contains(",")) {
+                cleanBase64 = cleanBase64.substring(cleanBase64.indexOf(",") + 1).trim();
+            }
+
             Map<String, Object> payload = Map.of(
                     "appID", applicationId != null ? applicationId : "42b9fd86-8f6d-403e-93a1-3a5856a7665e",
                     "entityType", "applicant",
@@ -114,7 +138,7 @@ public class IrisService {
                     "userID", card.getUploaderEmail(),
                     "files", List.of(Map.of(
                             "fileObjectRef", card.getFileName() != null ? card.getFileName() : "visiting_card.jpg",
-                            "fileObject", base64Image
+                            "fileObject", cleanBase64
                     ))
             );
 
@@ -128,6 +152,7 @@ public class IrisService {
 
             HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
                     .uri(URI.create(fullUrl))
+                    .timeout(Duration.ofSeconds(12))
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(requestJson));
 
@@ -144,6 +169,19 @@ public class IrisService {
             HttpRequest request = reqBuilder.build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             String responseBody = response.body();
+
+            if (response.statusCode() == 401) {
+                log.warn("IRIS returned 401 Unauthorized for record [{}]. Invalidating cached token and retrying with fresh authentication...", card.getRecordId());
+                synchronized (this) {
+                    this.cachedAccessToken = null;
+                }
+                String newToken = getAccessToken();
+                if (newToken != null && !newToken.trim().isEmpty()) {
+                    HttpRequest retryReq = reqBuilder.header("Authorization", "Bearer " + newToken).build();
+                    response = httpClient.send(retryReq, HttpResponse.BodyHandlers.ofString());
+                    responseBody = response.body();
+                }
+            }
 
             if (response.statusCode() == 200) {
                 JsonNode json = objectMapper.readTree(responseBody);
@@ -189,9 +227,19 @@ public class IrisService {
             });
         }
 
-        // 2. Extract from key_value_pairs groups (e.g. Others: [{ key: "Name", value: "..." }], PersonalInfo: [...])
+        // 2. Extract from key_value_pairs (supports both Array format and Object/Category format)
         JsonNode kv = json.path("fileObjectJSON").path("key_value_pairs");
-        if (kv.isObject()) {
+        if (kv.isArray()) {
+            for (JsonNode item : kv) {
+                if (item.has("key") && item.has("value") && !item.get("value").isNull()) {
+                    String k = item.get("key").asText().toLowerCase().replace("_", "").replace(" ", "");
+                    String v = item.get("value").asText().trim();
+                    if (!v.isEmpty()) {
+                        extractedMap.put(k, v);
+                    }
+                }
+            }
+        } else if (kv.isObject()) {
             kv.fields().forEachRemaining(category -> {
                 JsonNode items = category.getValue();
                 if (items.isArray()) {

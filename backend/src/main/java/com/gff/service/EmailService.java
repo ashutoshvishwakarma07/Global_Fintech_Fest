@@ -35,10 +35,10 @@ public class EmailService {
     @Autowired(required = false)
     private JavaMailSender mailSender;
 
-    @Value("${app.mail.lead-email:aksh.sinha@qualtechedge.com,manish.kankani@qualtechedge.com,ashish.srivastava@qualtechedge.com}")
+    @Value("${app.mail.lead-email:jyoti.sonani@qualtechedge.com,ashutosh.vishwakarma@qualtechedge.com}")
     private String leadEmailsConfig;
 
-    @Value("${app.mail.cc-email:naveen.kumar1@qualtechedge.com,amit.sethia@qualtechedge.com}")
+    @Value("${app.mail.cc-email:}")
     private String ccEmailsConfig;
 
     @Value("${app.mail.from-email:alert@qualtechedge.com}")

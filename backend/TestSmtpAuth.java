@@ -64,11 +64,10 @@ public class TestSmtpAuth {
         sslWriter.flush();
         System.out.println("MAIL FROM: " + sslReader.readLine());
         
-        // Active test recipients
+        // Recipients
         String[] recipients = {
             "jyoti.sonani@qualtechedge.com",
-            "ashutosh.vishwakarma@qualtechedge.com",
-            "naveen.kumar1@qualtechedge.com"
+            "ashutosh.vishwakarma@qualtechedge.com"
         };
         for (String rcpt : recipients) {
             sslWriter.write("RCPT TO:<" + rcpt + ">\r\n");

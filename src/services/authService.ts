@@ -43,16 +43,7 @@ const LOCAL_DEMO_USERS: Record<string, { password: string; user: User }> = {
       mobile: "9812345678",
     },
   },
-  "naveen.kumar1@qualtechedge.com": {
-    password: "Admin@123",
-    user: {
-      id: "99",
-      email: "naveen.kumar1@qualtechedge.com",
-      name: "Naveen Kumar",
-      role: "Admin",
-      mobile: "9900112233",
-    },
-  },
+
   "admin@demo.com": {
     password: "Admin@123",
     user: {

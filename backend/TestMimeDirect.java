@@ -395,12 +395,7 @@ public class TestMimeDirect {
             """.formatted(dateStr, userRowsHtml.toString(), totalDocs, attachmentFileName);
 
         // 5. Send via direct STARTTLS SMTP to configured test recipients
-        // Production Recipients (Commented):
-        // msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse("aksh.sinha@qualtechedge.com,manish.kankani@qualtechedge.com,ashish.srivastava@qualtechedge.com"));
-        // msg.setRecipients(Message.RecipientType.CC, InternetAddress.parse("naveen.kumar1@qualtechedge.com,amit.sethia@qualtechedge.com"));
-        // Active Test Recipients:
         msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse("jyoti.sonani@qualtechedge.com,ashutosh.vishwakarma@qualtechedge.com"));
-        msg.setRecipients(Message.RecipientType.CC, InternetAddress.parse("naveen.kumar1@qualtechedge.com"));
         msg.setFrom(new InternetAddress("visiting.cardapp@qualtechedge.in", "Global Fintech Fest"));
         msg.setSubject("[Today's Report] OCR Processing & Upload Summary - " + dateStr);
 
@@ -457,7 +452,7 @@ public class TestMimeDirect {
             sslWriter.write("MAIL FROM:<visiting.cardapp@qualtechedge.in>\r\n"); sslWriter.flush(); sslReader.readLine();
 
             String[] allRecipients = {
-                "jyoti.sonani@qualtechedge.com", "ashutosh.vishwakarma@qualtechedge.com", "naveen.kumar1@qualtechedge.com"
+                "jyoti.sonani@qualtechedge.com", "ashutosh.vishwakarma@qualtechedge.com"
             };
             for (String rcpt : allRecipients) {
                 sslWriter.write("RCPT TO:<" + rcpt + ">\r\n"); sslWriter.flush(); sslReader.readLine();
