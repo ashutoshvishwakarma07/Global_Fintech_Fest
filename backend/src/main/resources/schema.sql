@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS visiting_cards (
     retry_count INT DEFAULT 0,
     error_message TEXT,
     
-    -- OCR Fields (for 6 PM IRIS Batch Job)
+    -- OCR Fields (Extracted visiting card details)
     ocr_status VARCHAR(32) NOT NULL DEFAULT 'PENDING',
     card_holder_name VARCHAR(255),
     company_name VARCHAR(255),

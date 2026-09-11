@@ -166,7 +166,7 @@ public class DocumentController {
     }
 
     /**
-     * Admin manual trigger for 11:15 PM OCR batch job.
+     * Admin manual trigger for OCR batch and report job.
      */
     @GetMapping("/trigger-ocr-batch")
     public ResponseEntity<ApiResponse<Map<String, Object>>> triggerOcrBatchManually() {

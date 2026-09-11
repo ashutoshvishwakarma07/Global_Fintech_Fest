@@ -39,7 +39,7 @@ public interface VisitingCardRepository extends JpaRepository<VisitingCard, Long
     Page<VisitingCard> findByUploaderRole(UserRole role, Pageable pageable);
 
     /**
-     * Filter pending/processing OCR items for scheduled batch processing.
+     * Query items by OCR status.
      */
     List<VisitingCard> findByOcrStatus(OcrStatus ocrStatus);
 
