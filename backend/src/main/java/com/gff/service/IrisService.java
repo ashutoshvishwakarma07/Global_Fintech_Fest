@@ -31,13 +31,16 @@ public class IrisService {
 
     private static final Logger log = LoggerFactory.getLogger(IrisService.class);
 
-    @Value("${iris.base-url:http://localhost:5000}")
+    @Value("${iris.base-url:http://iris-qa.qualtechedge.in/python}")
     private String irisBaseUrl;
 
-    @Value("${iris.application-id:APP001}")
+    @Value("${iris.extract-endpoint:/extract-document-public}")
+    private String extractEndpoint;
+
+    @Value("${iris.application-id:42b9fd86-8f6d-403e-93a1-3a5856a7665e}")
     private String applicationId;
 
-    @Value("${iris.password:secret}")
+    @Value("${iris.password:password1}")
     private String password;
 
     @Value("${iris.entity-ref:ENT-1001}")
@@ -96,20 +99,14 @@ public class IrisService {
 
     /**
      * Sync extraction for a visiting card.
-     * POST /extract-document
+     * POST /extract-document-public (or /extract-document)
      */
     public boolean extractVisitingCardSync(VisitingCard card, String base64Image) {
         try {
-            String token = getAccessToken();
-            if (token == null) {
-                log.warn("Cannot extract: IRIS authentication token is null");
-                return false;
-            }
-
             String ref = (entityRef != null && !entityRef.trim().isEmpty()) ? entityRef.trim() : "ENT-1001";
 
             Map<String, Object> payload = Map.of(
-                    "appID", applicationId != null ? applicationId : "APP001",
+                    "appID", applicationId != null ? applicationId : "42b9fd86-8f6d-403e-93a1-3a5856a7665e",
                     "entityType", "applicant",
                     "entityRef", ref,
                     "documentName", "Visiting Card",
@@ -122,33 +119,46 @@ public class IrisService {
             );
 
             String requestJson = objectMapper.writeValueAsString(payload);
-            log.info("IRIS /extract-document Request Payload for record [{}]:\nappID={}, entityRef={}, docRef={}, fileRef={}",
-                    card.getRecordId(), applicationId, ref, card.getRecordId(), card.getFileName());
+            String ep = (extractEndpoint != null && !extractEndpoint.trim().isEmpty()) ? extractEndpoint.trim() : "/extract-document-public";
+            if (!ep.startsWith("/")) ep = "/" + ep;
+            String fullUrl = irisBaseUrl + ep;
 
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(irisBaseUrl + "/extract-document"))
+            log.info("IRIS OCR extraction Request Payload for record [{}] to [{}]:\nappID={}, entityRef={}, docRef={}, fileRef={}",
+                    card.getRecordId(), fullUrl, applicationId, ref, card.getRecordId(), card.getFileName());
+
+            HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
+                    .uri(URI.create(fullUrl))
                     .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + token)
-                    .POST(HttpRequest.BodyPublishers.ofString(requestJson))
-                    .build();
+                    .POST(HttpRequest.BodyPublishers.ofString(requestJson));
 
+            // Attach token if available (for protected endpoints)
+            try {
+                String token = getAccessToken();
+                if (token != null && !token.trim().isEmpty()) {
+                    reqBuilder.header("Authorization", "Bearer " + token);
+                }
+            } catch (Exception tErr) {
+                log.debug("IRIS token fetch skipped/failed, proceeding with public extraction: {}", tErr.getMessage());
+            }
+
+            HttpRequest request = reqBuilder.build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             String responseBody = response.body();
 
             if (response.statusCode() == 200) {
                 JsonNode json = objectMapper.readTree(responseBody);
                 String prettyJson = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(json);
-                log.info("IRIS /extract-document Response JSON for record [{}]:\n{}", card.getRecordId(), prettyJson);
+                log.info("IRIS OCR extraction Response JSON for record [{}]:\n{}", card.getRecordId(), prettyJson);
 
                 if ("S".equalsIgnoreCase(json.path("status").asText())) {
                     parseAndSaveOcrResult(card, json);
                     return true;
                 } else {
-                    log.warn("IRIS /extract-document returned non-success status [{}] for record [{}]:\n{}",
+                    log.warn("IRIS OCR extraction returned non-success status [{}] for record [{}]:\n{}",
                             json.path("status").asText(), card.getRecordId(), prettyJson);
                 }
             } else {
-                log.warn("IRIS /extract-document failed with HTTP status {} for record [{}]:\n{}",
+                log.warn("IRIS OCR extraction failed with HTTP status {} for record [{}]:\n{}",
                         response.statusCode(), card.getRecordId(), responseBody);
             }
         } catch (Exception e) {
